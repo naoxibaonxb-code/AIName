@@ -1,0 +1,23 @@
+{
+	"pages": [
+		{
+			"path": "pages/login/login",
+			"style": { "navigationBarTitleText": "登录", "navigationStyle": "custom" }
+		},
+		{
+			"path": "pages/register/register",
+			"style": { "navigationBarTitleText": "注册", "navigationStyle": "custom" }
+		},
+		{
+			"path": "pages/index/index",
+			"style": { "navigationBarTitleText": "AI 起名", "navigationStyle": "custom" }
+		}
+	],
+	"globalStyle": {
+		"navigationBarTextStyle": "black",
+		"navigationBarTitleText": "AI 起名",
+		"navigationBarBackgroundColor": "#F4F0E8",
+		"backgroundColor": "#F4F0E8"
+	},
+	"uniIdRouter": {}
+}
