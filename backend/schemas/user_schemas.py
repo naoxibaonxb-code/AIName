@@ -1,4 +1,6 @@
-from pydantic import BaseModel, Field, EmailStr, model_validator
+from datetime import datetime
+
+from pydantic import BaseModel, ConfigDict, Field, EmailStr, model_validator
 from typing import Annotated
 
 UsernameStr = Annotated[str, Field(
@@ -37,9 +39,15 @@ class LoginIn(BaseModel):
 
 
 class UserSchema(BaseModel):
+    model_config = ConfigDict(from_attributes=True)
+
     id: Annotated[int, Field(...)]
     username: UsernameStr
     email: EmailStr
+    role: str
+    is_active: bool
+    created_at: datetime
+    usage_count: int
 
 
 class LoginOut(BaseModel):

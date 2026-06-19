@@ -20,7 +20,6 @@ import models
 # access to the values within the .ini file in use.
 config = context.config
 database_url = settings.db_url
-print(database_url)
 if database_url is None:
     raise ValueError("DB_URI not set")
 config.set_main_option("sqlalchemy.url", database_url)

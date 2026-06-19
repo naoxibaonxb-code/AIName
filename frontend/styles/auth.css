@@ -1,6 +1,6 @@
 .page { min-height: 100vh; background: linear-gradient(155deg, #e8efe6 0%, #f7f2e8 46%, #eee1cc 100%); }
 .safe { height: var(--status-bar-height); }
-.wrap { padding: 72rpx 48rpx 60rpx; max-width: 760rpx; margin: 0 auto; }
+.wrap { width: 100%; max-width: 460px; padding: 72rpx 48rpx 60rpx; margin: 0 auto; }
 .brand { display: flex; align-items: center; gap: 18rpx; margin-bottom: 68rpx; }
 .seal { width: 72rpx; height: 72rpx; border-radius: 20rpx; background: #315c4c; color: white; display: flex; align-items: center; justify-content: center; font: 600 40rpx serif; box-shadow: 0 12rpx 30rpx rgba(49,92,76,.2); }
 .brand-name { font-size: 34rpx; font-weight: 650; letter-spacing: 4rpx; }
@@ -18,3 +18,21 @@
 .primary[disabled] { background: #8ca097; color: #e9eeeb; }
 .switch { text-align: center; color: #7b7d77; font-size: 26rpx; margin-top: 34rpx; }
 .link { color: #315c4c; font-weight: 600; margin-left: 8rpx; }
+
+@media (max-width: 380px) {
+  .wrap { padding: 44rpx 28rpx 48rpx; }
+  .brand { margin-bottom: 46rpx; }
+  .seal { width: 64rpx; height: 64rpx; font-size: 34rpx; }
+  .brand-name { font-size: 30rpx; }
+  .title { font-size: 48rpx; }
+  .subtitle { margin-bottom: 38rpx; font-size: 25rpx; }
+  .form { padding: 28rpx 24rpx; border-radius: 24rpx; }
+  .code-row { gap: 10rpx; }
+  .code-btn { width: 190rpx; font-size: 22rpx; }
+}
+
+@media (min-width: 768px) {
+  .wrap { padding: 56px 24px 48px; }
+  .brand { margin-bottom: 38px; }
+  .form { padding: 28px; border-radius: 22px; }
+}

@@ -1,10 +1,13 @@
 import jwt
-from fastapi import HTTPException, Security
+from fastapi import Depends, HTTPException, Security
 from fastapi.security import HTTPAuthorizationCredentials, HTTPBearer
+from sqlalchemy.ext.asyncio import AsyncSession
 from datetime import datetime
 from enum import Enum
 from settings.config import settings
 from starlette.status import HTTP_401_UNAUTHORIZED, HTTP_403_FORBIDDEN
+from dependencies import get_session
+from models.user import User
 
 # pyjwt: pip install pyjwt
 from threading import Lock
@@ -98,9 +101,37 @@ class AuthHandler(metaclass=SingletonMeta):
             raise HTTPException(status_code=HTTP_401_UNAUTHORIZED,
                                 detail='Refresh Token不可用')
 
-    def auth_access_dependency(self, auth: HTTPAuthorizationCredentials =
-    Security(security)):
-        return self.decode_access_token(auth.credentials)
+    async def _get_current_user(
+            self, auth: HTTPAuthorizationCredentials, session: AsyncSession) -> User:
+        user_id = int(self.decode_access_token(auth.credentials))
+        user = await session.get(User, user_id)
+        if not user or user.deleted_at is not None:
+            raise HTTPException(status_code=HTTP_401_UNAUTHORIZED, detail="用户不存在")
+        if not user.is_active:
+            raise HTTPException(status_code=HTTP_403_FORBIDDEN, detail="账号已被禁用")
+        return user
+
+    async def auth_access_dependency(
+            self,
+            auth: HTTPAuthorizationCredentials = Security(security),
+            session: AsyncSession = Depends(get_session)) -> int:
+        user = await self._get_current_user(auth, session)
+        return user.id
+
+    async def current_user_dependency(
+            self,
+            auth: HTTPAuthorizationCredentials = Security(security),
+            session: AsyncSession = Depends(get_session)) -> User:
+        return await self._get_current_user(auth, session)
+
+    async def admin_dependency(
+            self,
+            auth: HTTPAuthorizationCredentials = Security(security),
+            session: AsyncSession = Depends(get_session)) -> User:
+        user = await self._get_current_user(auth, session)
+        if user.role != "admin":
+            raise HTTPException(status_code=HTTP_403_FORBIDDEN, detail="需要管理员权限")
+        return user
 
     def auth_refresh_dependency(self, auth: HTTPAuthorizationCredentials =
     Security(security)):

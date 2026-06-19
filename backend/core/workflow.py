@@ -1,4 +1,5 @@
 import asyncio
+import logging
 import uuid
 from typing import TypedDict, List, Dict, Any, Literal
 
@@ -10,6 +11,14 @@ from schemas.name import NameIn, FeedBackIn
 from schemas.agent import NameResultSchema
 from core.rag_service import retrieve_user_knowledge
 from core.tools import check_com_domain
+
+logger = logging.getLogger(__name__)
+NAMING_BUSY_MESSAGE = "当前访问人数较多，生成服务暂时繁忙，请稍后重新尝试。"
+NAMING_TIMEOUT_SECONDS = 75
+
+
+class NamingServiceError(RuntimeError):
+    """模型超时、无有效结果或上游服务不可用。"""
 
 
 class WorkFlowState(TypedDict):
@@ -29,11 +38,27 @@ llm = ChatDeepSeek(
     model="deepseek-chat",
     api_key=settings.DEEPSEEK_API_KEY,
     temperature=0.5,
+    timeout=45,
 )
 
 structured_llm = llm.with_structured_output(NameResultSchema).with_retry(
     stop_after_attempt=3
 )
+
+
+async def invoke_naming_model(prompt: str) -> NameResultSchema:
+    try:
+        response = await structured_llm.ainvoke(prompt)
+    except asyncio.CancelledError:
+        raise
+    except Exception as exc:
+        logger.exception("大模型调用或结构化解析失败")
+        raise NamingServiceError(NAMING_BUSY_MESSAGE) from exc
+
+    if response is None or not response.names:
+        logger.warning("大模型返回空的命名结果")
+        raise NamingServiceError(NAMING_BUSY_MESSAGE)
+    return response
 
 
 # 定义超级智能体
@@ -51,9 +76,7 @@ async def human_naming_node(state: WorkFlowState) -> Dict[str, Any]:
     【其它具体要求】: {state['other']}
     【避讳排除字】: {'、'.join(state['exclude'])}
     原则：平仄协调，优先从《诗经》《楚辞》或唐诗宋词中汲取灵感。请给出 5 个候选方案。"""
-    response = await structured_llm.ainvoke(prompt)
-    if response is None:
-        raise ValueError("大模型/命名节点未返回有效结果，response 为 None")
+    response = await invoke_naming_model(prompt)
     return {"final_output": response.model_dump(mode="json")}
 
 
@@ -82,16 +105,14 @@ async def company_naming_node(state: WorkFlowState) -> Dict[str, Any]:
     1. 必须遵守知识库和修改意见。
     2. 你必须为每个公司名构思一个绝佳的 .com 英文或拼音域名，填入 domain 字段（例如：hema.com 或 greenearth.com）。
     请给出 5 个候选方案。"""
-    response = await structured_llm.ainvoke(prompt)
-    if not response or not hasattr(response, "names"):
-        return {
-            "final_output": {"names": [{"name": "生成失败", "reference": "无",
-                                        "moral": "大模型服务异常，请重试"}]},
-            "history_names": ""
-        }
+    response = await invoke_naming_model(prompt)
     # ================= 🌟 挂载工具：并发执行域名校验 =================
     # 为了不让 5 个域名的查询排队，我们使用 asyncio.gather 进行并发查询（极速体验）
-    tasks = [check_com_domain(n.domain) for n in response.names]
+    tasks = [
+        check_com_domain(n.domain)
+        if n.domain else asyncio.sleep(0, result="未提供域名")
+        for n in response.names
+    ]
     statuses = await asyncio.gather(*tasks)
 
     # 将查询结果赋给大模型生成的对象
@@ -109,7 +130,7 @@ async def pet_naming_node(state: WorkFlowState) -> Dict[str, Any]:
     【字数限制】: {state['length']}
     【避讳排除字】: {'、'.join(state['exclude'])}
     原则：亲切好记、富有画面感或软萌感。请给出 5 个候选方案。"""
-    response = await structured_llm.ainvoke(prompt)
+    response = await invoke_naming_model(prompt)
     return {"final_output": response.model_dump()}
 
 
@@ -141,10 +162,44 @@ from settings.config import settings
 from psycopg_pool import AsyncConnectionPool
 
 PG_URL = settings.pg_url
-connection_pool = AsyncConnectionPool(PG_URL, max_size=10)
-memory = AsyncPostgresSaver(connection_pool)
+connection_pool = AsyncConnectionPool(PG_URL, max_size=10, open=False)
+memory: AsyncPostgresSaver | None = None
+naming_graph = None
 
-naming_graph = workflow.compile(checkpointer=memory)
+
+async def initialize_naming_workflow() -> None:
+    global memory, naming_graph
+    await connection_pool.open(wait=True, timeout=10)
+    memory = AsyncPostgresSaver(connection_pool)
+    naming_graph = workflow.compile(checkpointer=memory)
+
+
+async def close_naming_workflow() -> None:
+    await connection_pool.close()
+
+
+async def run_naming_graph(data: Dict[str, Any], config: Dict[str, Any]):
+    if naming_graph is None:
+        raise NamingServiceError(NAMING_BUSY_MESSAGE)
+    try:
+        final_state = await asyncio.wait_for(
+            naming_graph.ainvoke(data, config=config),
+            timeout=NAMING_TIMEOUT_SECONDS,
+        )
+    except asyncio.TimeoutError as exc:
+        logger.warning("命名工作流执行超过 %s 秒", NAMING_TIMEOUT_SECONDS)
+        raise NamingServiceError(NAMING_BUSY_MESSAGE) from exc
+    except NamingServiceError:
+        raise
+    except Exception as exc:
+        logger.exception("命名工作流执行失败")
+        raise NamingServiceError(NAMING_BUSY_MESSAGE) from exc
+
+    output = final_state.get("final_output") if final_state else None
+    if not isinstance(output, dict) or not output.get("names"):
+        logger.warning("命名工作流未返回有效 names 列表")
+        raise NamingServiceError(NAMING_BUSY_MESSAGE)
+    return final_state
 
 
 async def get_name_v2(name_info: NameIn, user_id: int) -> Dict[str, Any]:
@@ -161,7 +216,7 @@ async def get_name_v2(name_info: NameIn, user_id: int) -> Dict[str, Any]:
         "final_output": {}
     }
     config = {"configurable": {"thread_id": thread_id}}
-    final_state = await naming_graph.ainvoke(initial_state, config=config)
+    final_state = await run_naming_graph(initial_state, config)
     return {"thread_id": thread_id, "names": final_state["final_output"]}
 
 
@@ -172,6 +227,6 @@ async def feedback_names(feedback_info: FeedBackIn, user_id: int) -> Dict[str, A
         "category": feedback_info.category,
     }
     config = {"configurable": {"thread_id": feedback_info.thread_id}}
-    final_state = await naming_graph.ainvoke(update_state, config=config)
+    final_state = await run_naming_graph(update_state, config)
     return {"thread_id": feedback_info.thread_id,
             "names": final_state["final_output"]}

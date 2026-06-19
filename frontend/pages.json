@@ -11,6 +11,14 @@
 		{
 			"path": "pages/index/index",
 			"style": { "navigationBarTitleText": "AI 起名", "navigationStyle": "custom" }
+		},
+		{
+			"path": "pages/admin/users",
+			"style": { "navigationBarTitleText": "用户管理", "navigationStyle": "custom" }
+		},
+		{
+			"path": "pages/profile/profile",
+			"style": { "navigationBarTitleText": "个人中心", "navigationStyle": "custom" }
 		}
 	],
 	"globalStyle": {

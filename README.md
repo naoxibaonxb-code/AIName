@@ -10,6 +10,8 @@ AIName is an AI-powered naming application that creates personalized names for p
 
 - 邮箱验证码注册与账号登录
 - JWT 登录状态认证
+- 用户中心、资料与密码修改
+- 登录记录、起名使用次数统计与账号注销
 - 生成人名、企业名和宠物名
 - 支持姓氏、性别、字数、偏好和避用字等条件
 - 展示名字的文化出处与寓意
@@ -71,16 +73,26 @@ AIName/
 - DeepSeek API Key
 - PostgreSQL、Ollama 和 Chroma（使用知识库功能时需要）
 
-进入后端目录并启动服务：
+进入后端目录，安装依赖并启动服务：
 
 ```bash
 cd backend
+pip install -r requirements.txt
+alembic upgrade head
 uvicorn main:app --reload
 ```
 
 默认接口地址为 `http://127.0.0.1:8000`，接口文档位于 `http://127.0.0.1:8000/docs`。
 
-> 项目当前未提供依赖清单。首次运行前需要在 Python 环境中安装源码所需依赖，后续建议补充 `requirements.txt`。
+#### 创建管理员
+
+管理员不能通过公开注册接口创建。先注册一个普通用户，执行数据库迁移后，在 `backend` 目录运行：
+
+```bash
+python create_admin.py admin@example.com
+```
+
+将示例邮箱替换为已注册账号的邮箱。重新登录后，首页会显示“用户管理”入口，可查看、搜索、禁用或恢复普通用户。
 
 #### 2. 前端
 
@@ -105,6 +117,8 @@ uvicorn main:app --reload
 
 - Email verification, registration, and login
 - JWT-based authentication
+- User profile and password management
+- Login history, usage statistics, and account cancellation
 - AI-generated names for people, companies, and pets
 - Custom surname, gender, length, preferences, and excluded characters
 - Cultural references and meaning explanations
@@ -127,12 +141,22 @@ Set up Python, MySQL, and Redis, then configure database, email, JWT, and DeepSe
 
 ```bash
 cd backend
+pip install -r requirements.txt
+alembic upgrade head
 uvicorn main:app --reload
 ```
 
 The API runs at `http://127.0.0.1:8000` by default. Interactive API documentation is available at `http://127.0.0.1:8000/docs`.
 
-> A dependency file is not included yet. Install the Python packages imported by the backend before running it, and consider adding a `requirements.txt` later.
+#### Create an Administrator
+
+Administrator accounts cannot be created through public registration. Register a regular user first, apply the database migration, and run the following command from `backend`:
+
+```bash
+python create_admin.py admin@example.com
+```
+
+Replace the example address with the email of an existing user. After signing in again, the administrator can view, search, disable, and restore regular users.
 
 #### Frontend
 
