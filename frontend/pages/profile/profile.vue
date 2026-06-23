@@ -21,9 +21,11 @@
         <view class="stat"><text class="stat-value small">{{ joinDate }}</text><text class="stat-label">加入时间</text></view>
       </view>
 
+      <view class="inspiration-menu"><view class="inspiration-item" @tap="toInspiration('history')"><view class="menu-mark">录</view><view><text>起名历史</text><text>查看每轮生成与调整</text></view><text class="menu-arrow">›</text></view><view class="inspiration-item warm" @tap="toInspiration('favorites')"><view class="menu-mark">藏</view><view><text>我的收藏</text><text>珍藏满意的好名字</text></view><text class="menu-arrow">›</text></view></view>
+
       <view class="card">
         <view class="card-head"><view><text class="card-index">01</text><text class="card-title">基本资料</text></view><text class="card-note">修改邮箱需验证</text></view>
-        <view class="field"><text class="label">用户名</text><input v-model.trim="profileForm.username" class="input" maxlength="20" placeholder="4-20 个字符" /></view>
+        <view class="field"><text class="label">用户名</text><input v-model.trim="profileForm.username" class="input" maxlength="20" placeholder="2-20 个字符" /></view>
         <view class="field"><text class="label">邮箱</text><input v-model.trim="profileForm.email" class="input" type="text" placeholder="请输入新邮箱" /></view>
         <template v-if="emailChanged">
           <view class="field"><text class="label">当前密码</text><input v-model="profileForm.current_password" class="input" password placeholder="用于确认本人操作" /></view>
@@ -52,9 +54,9 @@
 
       <view class="danger-card">
         <view class="danger-title">注销账号</view>
-        <view class="danger-text">注销后账号将无法恢复，登录权限会立即失效。请输入密码并填写 DELETE 确认。</view>
+        <view class="danger-text">注销后账号将无法恢复，登录权限会立即失效。请输入密码并填写“注销”确认。</view>
         <input v-model="cancelForm.password" class="input danger-input" password placeholder="当前密码" />
-        <input v-model.trim="cancelForm.confirmation" class="input danger-input" placeholder="请输入 DELETE" />
+        <input v-model.trim="cancelForm.confirmation" class="input danger-input" placeholder="请输入“注销”" />
         <button class="cancel-btn" :disabled="cancelling" @tap="confirmCancel">{{ cancelling ? '正在注销...' : '永久注销账号' }}</button>
       </view>
     </view>
@@ -106,16 +108,23 @@ async function sendCode() {
 }
 
 async function saveProfile() {
-  if (profileForm.username.length < 4) return toast('用户名至少 4 个字符')
+  if (profileForm.username.length < 2) return toast('用户名至少 2 个字符')
   if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(profileForm.email)) return toast('请输入正确的邮箱')
   if (emailChanged.value && (!profileForm.current_password || profileForm.email_code.length !== 4)) return toast('请填写当前密码和验证码')
   savingProfile.value = true
   try {
-    const updated = await api.updateProfile({ ...profileForm })
+    const payload = { username: profileForm.username, email: profileForm.email }
+    if (emailChanged.value) {
+      payload.current_password = profileForm.current_password
+      payload.email_code = profileForm.email_code
+    }
+    const updated = await api.updateProfile(payload)
     Object.assign(profile, updated)
     originalEmail.value = updated.email
     profileForm.current_password = ''
     profileForm.email_code = ''
+    profileForm.username = updated.username
+    profileForm.email = updated.email
     uni.setStorageSync('user', updated)
     uni.showToast({ title: '资料已更新' })
   } catch (e) { toast(e.message) }
@@ -139,7 +148,7 @@ function logout() {
 }
 
 function confirmCancel() {
-  if (!cancelForm.password || cancelForm.confirmation !== 'DELETE') return toast('请填写密码并输入 DELETE')
+  if (!cancelForm.password || cancelForm.confirmation !== '注销') return toast('请填写密码并输入“注销”')
   uni.showModal({ title: '永久注销账号', content: '此操作不可恢复，确定继续吗？', confirmColor: '#a84f44', success: ({ confirm }) => { if (confirm) cancelAccount() } })
 }
 
@@ -151,6 +160,7 @@ async function cancelAccount() {
 }
 
 function clearSession() { uni.clearStorageSync(); uni.reLaunch({ url: '/pages/login/login' }) }
+function toInspiration(tab) { uni.navigateTo({ url: `/pages/history/history?tab=${tab}` }) }
 function back() { uni.navigateBack() }
 function toast(message) { uni.showToast({ title: message, icon: 'none' }) }
 function formatDate(value) { const d = new Date(value); return `${d.getFullYear()}.${String(d.getMonth() + 1).padStart(2, '0')}.${String(d.getDate()).padStart(2, '0')}` }
@@ -173,9 +183,11 @@ function deviceName(agent = '') {
 .card{background:rgba(255,255,255,.76);border-radius:26rpx;padding:34rpx 30rpx;margin-top:26rpx;box-shadow:0 14rpx 44rpx rgba(66,61,50,.07)}.card-head{display:flex;align-items:center;justify-content:space-between;margin-bottom:32rpx}.card-index{color:#b97a49;font:italic 20rpx serif;margin-right:14rpx}.card-title{font-size:29rpx;font-weight:650}.card-note{font-size:20rpx;color:#9a9b94}.field{margin-bottom:25rpx}.label{display:block;font-size:24rpx;font-weight:600;margin-bottom:13rpx}.input{box-sizing:border-box;width:100%;height:86rpx;padding:0 23rpx;background:#f5f4ef;border:1px solid #e1dfd7;border-radius:15rpx;font-size:26rpx}.code-row{display:flex;gap:13rpx}.code-row .input{flex:1;min-width:0}.code-btn{width:190rpx;height:86rpx;line-height:86rpx;padding:0;border-radius:15rpx;background:#e4ece7;color:#315c4c;font-size:23rpx}.primary{height:88rpx;line-height:88rpx;border-radius:16rpx;background:#315c4c;color:#fff;font-size:26rpx;margin-top:10rpx}.primary.secondary{background:#536a60}
 .record{display:flex;align-items:center;gap:16rpx;padding:22rpx 0;border-top:1px solid #e8e5dd}.record-dot{width:14rpx;height:14rpx;border-radius:50%;background:#668b79;box-shadow:0 0 0 7rpx #e5ede8}.record-main{flex:1;margin-left:8rpx}.record-device,.record-time{display:block}.record-device{font-size:24rpx;font-weight:600}.record-time{font-size:20rpx;color:#999;margin-top:5rpx}.record-ip{font-size:20rpx;color:#777}.empty{text-align:center;color:#999;padding:50rpx 0;font-size:23rpx}
 .logout-btn{height:86rpx;line-height:86rpx;margin-top:28rpx;background:#fff;color:#315c4c;border:1px solid #d8ddd9;border-radius:17rpx;font-size:25rpx}.danger-card{padding:34rpx 30rpx;margin-top:28rpx;border:1px solid #e7cbc5;border-radius:24rpx;background:#f8efeb}.danger-title{font-size:28rpx;font-weight:650;color:#9d493f}.danger-text{font-size:22rpx;line-height:1.7;color:#906e68;margin:12rpx 0 24rpx}.danger-input{background:#fff;margin-top:14rpx;border-color:#ead7d2}.cancel-btn{height:82rpx;line-height:82rpx;margin-top:22rpx;background:#a84f44;color:#fff;border-radius:15rpx;font-size:24rpx}
+.inspiration-menu{display:grid;grid-template-columns:1fr 1fr;gap:18rpx;margin:26rpx 0}.inspiration-item{display:flex;align-items:center;gap:15rpx;padding:25rpx 22rpx;border:1px solid #dce3de;border-radius:21rpx;background:rgba(255,255,255,.66)}.inspiration-item.warm{border-color:#e5d8ca}.menu-mark{flex:none;width:58rpx;height:58rpx;border-radius:17rpx;background:#315c4c;color:#fff;display:flex;align-items:center;justify-content:center;font:600 26rpx serif}.warm .menu-mark{background:#a16f48}.inspiration-item>view:nth-child(2){flex:1;min-width:0}.inspiration-item text{display:block}.inspiration-item>view:nth-child(2)>text:first-child{font-size:25rpx;font-weight:650}.inspiration-item>view:nth-child(2)>text:last-child{margin-top:5rpx;color:#92958f;font-size:18rpx}.menu-arrow{color:#9a9d97;font-size:35rpx}
 @media(min-width:700px){.content{padding-top:30px}.stats{padding:22px 10px}.card{padding:28px;margin-top:22px}}
 .content{width:100%;max-width:880px}.identity-main{min-width:0}.identity .email{overflow:hidden;text-overflow:ellipsis;white-space:nowrap}.record-main{min-width:0}.record-ip{overflow-wrap:anywhere;text-align:right}
 @media(max-width:480px){.topbar{height:112rpx;padding:0 20rpx}.back,.spacer{width:58rpx}.back{font-size:52rpx}.top-title{font-size:30rpx}.content{padding:26rpx 18rpx 60rpx}.identity{gap:16rpx;padding:8rpx 4rpx 26rpx}.avatar{width:82rpx;height:82rpx;border-radius:24rpx;font-size:34rpx}.username{font-size:30rpx}.identity .email{max-width:430rpx}.role{padding:7rpx 13rpx}.stats{padding:24rpx 4rpx;border-radius:22rpx}.stat-value{font-size:33rpx}.stat-value.small{font-size:21rpx}.card{padding:28rpx 22rpx;border-radius:22rpx}.card-head{align-items:flex-start;gap:12rpx}.card-note{max-width:180rpx;text-align:right}.record{align-items:flex-start;flex-wrap:wrap}.record-ip{width:100%;padding-left:38rpx;text-align:left}.danger-card{padding:28rpx 22rpx}}
 @media(max-width:360px){.identity .email{max-width:330rpx}.stats{flex-wrap:wrap}.stat{min-width:30%}.stat-value.small{font-size:19rpx}.code-row{flex-direction:column}.code-row .input,.code-btn{width:100%}.code-btn{margin:0}.card-head{flex-direction:column}.card-note{max-width:none;text-align:left;margin-left:54rpx}}
+@media(max-width:520px){.inspiration-menu{grid-template-columns:1fr}.inspiration-item{padding:22rpx}}
 @media(min-width:768px){.content{padding:34px 28px 70px}.identity{padding-left:8px;padding-right:8px}.stats{padding:24px 12px}.card{padding:30px 34px}.field{max-width:720px}.record{padding:18px 0}}
 </style>

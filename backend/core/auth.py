@@ -1,114 +1,62 @@
+from datetime import datetime, timezone
+
 import jwt
 from fastapi import Depends, HTTPException, Security
 from fastapi.security import HTTPAuthorizationCredentials, HTTPBearer
 from sqlalchemy.ext.asyncio import AsyncSession
-from datetime import datetime
-from enum import Enum
-from settings.config import settings
 from starlette.status import HTTP_401_UNAUTHORIZED, HTTP_403_FORBIDDEN
+
 from dependencies import get_session
 from models.user import User
-
-# pyjwt: pip install pyjwt
-from threading import Lock
+from settings.config import settings
 
 
-class SingletonMeta(type):
-    """
-    This is a thread-safe implementation of Singleton.
-    """
-    _instances = {}
-    _lock: Lock = Lock()
-
-    def __call__(cls, *args, **kwargs):
-        with cls._lock:
-            if cls not in cls._instances:
-                instance = super().__call__(*args, **kwargs)
-                cls._instances[cls] = instance
-        return cls._instances[cls]
-
-
-class TokenTypeEnum(Enum):
-    ACCESS_TOKEN = 1
-    REFRESH_TOKEN = 2
-
-
-class AuthHandler(metaclass=SingletonMeta):
+class AuthHandler:
     security = HTTPBearer()
-    # Authorization: Bearer {token}
-    secret = settings.JWT_SECRET_KEY
+    access_token_type = "1"
 
-    def _encode_token(self, user_id: int, type: TokenTypeEnum):
-        payload = dict(
-            iss=str(user_id),
-            sub=str(type.value)
-        )
-        if type == TokenTypeEnum.ACCESS_TOKEN:
-            exp = datetime.now() + settings.JWT_ACCESS_TOKEN_EXPIRES
-        else:
-            exp = datetime.now() + settings.JWT_REFRESH_TOKEN_EXPIRES
-        return jwt.encode(payload, self.secret, algorithm='HS256')
+    def encode_login_token(self, user_id: int) -> dict[str, str]:
+        payload = {
+            "iss": str(user_id),
+            "sub": self.access_token_type,
+            "exp": datetime.now(timezone.utc) + settings.JWT_ACCESS_TOKEN_EXPIRES,
+        }
+        token = jwt.encode(payload, settings.JWT_SECRET_KEY, algorithm="HS256")
+        return {"access_token": token}
 
-    def encode_login_token(self, user_id: int):
-        access_token = self._encode_token(user_id, TokenTypeEnum.ACCESS_TOKEN)
-        refresh_token = self._encode_token(user_id, TokenTypeEnum.REFRESH_TOKEN)
-        login_token = dict(
-            access_token=f"{access_token}",
-            refresh_token=f"{refresh_token}"
-        )
-        return login_token
-
-    def encode_update_token(self, user_id):
-        access_token = self._encode_token(user_id, TokenTypeEnum.ACCESS_TOKEN)
-        update_token = dict(
-            access_token=f"{access_token}"
-        )
-        return update_token
-
-    def decode_access_token(self, token):
-        # ACCESS TOKEN: 不可用（过期，或有问题），都用403错误
+    def decode_access_token(self, token: str) -> str:
         try:
-            payload = jwt.decode(token, self.secret, algorithms=['HS256'])
-            if str(payload['sub']) != str(TokenTypeEnum.ACCESS_TOKEN.value):
-                raise HTTPException(status_code=HTTP_403_FORBIDDEN,
-                                    detail='Token类型错误！')
-            return payload['iss']
-        except jwt.ExpiredSignatureError:
-            raise HTTPException(status_code=HTTP_403_FORBIDDEN, detail='Access Token已过期')
-        except jwt.InvalidSignatureError:
-            # 专门捕获签名错误：这说明 Secret Key 100% 不对
-            raise HTTPException(status_code=HTTP_403_FORBIDDEN, detail='Token签名不匹配，请检查Secret Key')
-        except jwt.DecodeError:
-            # 专门捕获解码错误：Token 格式根本不对
-            raise HTTPException(status_code=HTTP_403_FORBIDDEN, detail='Token格式非法或损坏')
-        except Exception as e:
-            # 捕获所有其他错误并返回具体信息
-            raise HTTPException(status_code=HTTP_403_FORBIDDEN, detail=f'未知错误: {str(e)}')
-
-    def decode_refresh_token(self, token):
-        # REFRESH TOKEN: 不可用（过期，或有问题），都用401错误
-        try:
-            payload = jwt.decode(token, self.secret, algorithms=['HS256'])
-            if payload['sub'] != int(TokenTypeEnum.REFRESH_TOKEN.value):
-                raise HTTPException(status_code=HTTP_401_UNAUTHORIZED,
-                                    detail='Token类型错误')
-            return payload['iss']
-        except jwt.ExpiredSignatureError:
-            raise HTTPException(status_code=HTTP_401_UNAUTHORIZED,
-                                detail='Refresh Token已过期')
-        except jwt.InvalidTokenError as e:
-            print(f"JWT Decode Error: {str(e)}")  # 在控制台查看具体的错误
-            raise HTTPException(status_code=HTTP_401_UNAUTHORIZED,
-                                detail='Refresh Token不可用')
+            payload = jwt.decode(
+                token, settings.JWT_SECRET_KEY, algorithms=["HS256"]
+            )
+            if payload.get("sub") != self.access_token_type:
+                raise HTTPException(
+                    status_code=HTTP_403_FORBIDDEN, detail="Token类型错误"
+                )
+            return payload["iss"]
+        except jwt.ExpiredSignatureError as exc:
+            raise HTTPException(
+                status_code=HTTP_403_FORBIDDEN, detail="Access Token已过期"
+            ) from exc
+        except (jwt.InvalidTokenError, KeyError) as exc:
+            raise HTTPException(
+                status_code=HTTP_403_FORBIDDEN, detail="Token非法或已损坏"
+            ) from exc
 
     async def _get_current_user(
-            self, auth: HTTPAuthorizationCredentials, session: AsyncSession) -> User:
+            self,
+            auth: HTTPAuthorizationCredentials,
+            session: AsyncSession) -> User:
         user_id = int(self.decode_access_token(auth.credentials))
         user = await session.get(User, user_id)
         if not user or user.deleted_at is not None:
-            raise HTTPException(status_code=HTTP_401_UNAUTHORIZED, detail="用户不存在")
+            raise HTTPException(
+                status_code=HTTP_401_UNAUTHORIZED, detail="用户不存在"
+            )
         if not user.is_active:
-            raise HTTPException(status_code=HTTP_403_FORBIDDEN, detail="账号已被禁用")
+            raise HTTPException(
+                status_code=HTTP_403_FORBIDDEN, detail="账号已被禁用"
+            )
         return user
 
     async def auth_access_dependency(
@@ -130,9 +78,7 @@ class AuthHandler(metaclass=SingletonMeta):
             session: AsyncSession = Depends(get_session)) -> User:
         user = await self._get_current_user(auth, session)
         if user.role != "admin":
-            raise HTTPException(status_code=HTTP_403_FORBIDDEN, detail="需要管理员权限")
+            raise HTTPException(
+                status_code=HTTP_403_FORBIDDEN, detail="需要管理员权限"
+            )
         return user
-
-    def auth_refresh_dependency(self, auth: HTTPAuthorizationCredentials =
-    Security(security)):
-        return self.decode_refresh_token(auth.credentials)

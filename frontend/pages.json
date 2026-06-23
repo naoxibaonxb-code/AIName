@@ -17,8 +17,28 @@
 			"style": { "navigationBarTitleText": "用户管理", "navigationStyle": "custom" }
 		},
 		{
+			"path": "pages/admin/usage",
+			"style": { "navigationBarTitleText": "调用统计", "navigationStyle": "custom" }
+		},
+		{
+			"path": "pages/admin/announcements",
+			"style": { "navigationBarTitleText": "公告配置", "navigationStyle": "custom" }
+		},
+		{
 			"path": "pages/profile/profile",
 			"style": { "navigationBarTitleText": "个人中心", "navigationStyle": "custom" }
+		},
+		{
+			"path": "pages/history/history",
+			"style": { "navigationBarTitleText": "历史与收藏", "navigationStyle": "custom" }
+		},
+		{
+			"path": "pages/history/detail",
+			"style": { "navigationBarTitleText": "历史详情", "navigationStyle": "custom" }
+		},
+		{
+			"path": "pages/knowledge/manage",
+			"style": { "navigationBarTitleText": "知识库管理", "navigationStyle": "custom" }
 		}
 	],
 	"globalStyle": {

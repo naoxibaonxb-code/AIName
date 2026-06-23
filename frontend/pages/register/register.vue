@@ -5,7 +5,7 @@
     <view class="form">
       <view class="field"><text class="label">邮箱</text><input v-model.trim="form.email" class="input" placeholder="请输入邮箱地址" /></view>
       <view class="field"><text class="label">验证码</text><view class="code-row"><input v-model.trim="form.code" class="input" type="number" maxlength="4" placeholder="4 位验证码" /><button class="code-btn" :disabled="countdown > 0 || sending" @tap="sendCode">{{ countdown ? `${countdown}s 后重发` : sending ? '发送中...' : '获取验证码' }}</button></view></view>
-      <view class="field"><text class="label">用户名</text><input v-model.trim="form.username" class="input" maxlength="20" placeholder="4-20 个字符" /></view>
+      <view class="field"><text class="label">用户名</text><input v-model.trim="form.username" class="input" maxlength="20" placeholder="2-20 个字符" /></view>
       <view class="field"><text class="label">密码</text><input v-model="form.password" class="input" password maxlength="20" placeholder="6-20 个字符" /></view>
       <view class="field"><text class="label">确认密码</text><input v-model="form.confirm_password" class="input" password maxlength="20" placeholder="请再次输入密码" /></view>
       <button class="primary" :disabled="loading" @tap="submit">{{ loading ? '注册中...' : '创建账号' }}</button>
@@ -30,7 +30,7 @@ async function sendCode() {
 async function submit() {
   if (!emailOk()) return uni.showToast({ title: '请输入正确的邮箱', icon: 'none' })
   if (form.code.length !== 4) return uni.showToast({ title: '请输入 4 位验证码', icon: 'none' })
-  if (form.username.length < 4) return uni.showToast({ title: '用户名至少 4 个字符', icon: 'none' })
+  if (form.username.length < 2) return uni.showToast({ title: '用户名至少 2 个字符', icon: 'none' })
   if (form.password.length < 6) return uni.showToast({ title: '密码至少 6 位', icon: 'none' })
   if (form.password !== form.confirm_password) return uni.showToast({ title: '两次密码输入不一致', icon: 'none' })
   loading.value = true

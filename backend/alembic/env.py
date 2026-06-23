@@ -3,7 +3,7 @@ from logging.config import fileConfig
 
 from sqlalchemy import pool
 from sqlalchemy.engine import Connection
-from sqlalchemy.ext.asyncio import async_engine_from_config, create_async_engine
+from sqlalchemy.ext.asyncio import async_engine_from_config
 
 from alembic import context
 
@@ -13,7 +13,7 @@ import sys
 sys.path.append(os.path.dirname(os.path.dirname(__file__)))
 from core.database import Base
 from settings.config import settings
-import models
+import models  # noqa: F401 - register model metadata for Alembic
 
 
 # this is the Alembic Config object, which provides

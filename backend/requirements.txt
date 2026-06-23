@@ -30,5 +30,6 @@ langchain-chroma==1.1.0
 langgraph==1.2.4
 langgraph-checkpoint-postgres==3.1.0
 chromadb==1.5.9
-openai==2.40.0
 pypdf
+reportlab==5.0.0
+Pillow==12.2.0

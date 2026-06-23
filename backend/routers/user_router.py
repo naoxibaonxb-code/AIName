@@ -102,8 +102,8 @@ async def cancel_account(
         data: AccountCancelIn,
         user: User = Depends(auth_handler.current_user_dependency),
         session: AsyncSession = Depends(get_session)):
-    if data.confirmation != "DELETE":
-        raise HTTPException(status_code=400, detail="请输入 DELETE 确认注销")
+    if data.confirmation != "注销":
+        raise HTTPException(status_code=400, detail="请输入“注销”确认操作")
     if not user.check_password(data.password):
         raise HTTPException(status_code=400, detail="密码错误")
     await UserRepository(session).cancel_account(user)

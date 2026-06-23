@@ -42,14 +42,6 @@ class User(Base):
         return password_hash.verify(password, self.password)
 
 
-class EmailCode(Base):
-    __tablename__ = "email_code"
-    id: Mapped[int] = mapped_column(Integer, primary_key=True, autoincrement=True)
-    email: Mapped[str] = mapped_column(String(100), unique=True)
-    code: Mapped[str] = mapped_column(String(100))
-    created_time: Mapped[datetime] = mapped_column(DateTime, default=datetime.now)
-
-
 class LoginRecord(Base):
     __tablename__ = "login_record"
     id: Mapped[int] = mapped_column(Integer, primary_key=True, autoincrement=True)

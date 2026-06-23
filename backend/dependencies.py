@@ -11,7 +11,4 @@ async def get_mail() -> FastMail:
 # 访问数据库链接
 async def get_session():
     async with AsyncSessionFactory() as session:
-        try:
-            yield session
-        finally:
-            await session.close()
+        yield session
