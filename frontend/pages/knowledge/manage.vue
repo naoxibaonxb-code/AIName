@@ -28,7 +28,7 @@
               <view class="file-head"><text class="file-name">{{ item.original_name }}</text><text :class="['status', item.status, { off: !item.is_enabled }]">{{ statusText(item) }}</text></view>
               <view class="meta"><text>{{ formatSize(item.file_size) }}</text><text>{{ item.chunk_count }} 个片段</text><text>{{ formatDate(item.uploaded_at) }}</text></view>
               <text v-if="item.error_message" class="error">{{ item.error_message }}</text>
-              <view class="actions">
+              <view v-if="canManageFile(item)" class="actions">
                 <button class="small" :disabled="changingId === item.id || item.status === 'processing'" @tap="toggleFile(item)">{{ item.is_enabled ? '停用' : '启用' }}</button>
                 <button class="small danger" :disabled="changingId === item.id" @tap="confirmDelete(item)">删除</button>
               </view>
@@ -136,6 +136,7 @@ function formatSize(size = 0) {
   return `${size || 0} B`
 }
 function formatDate(value) { return value ? String(value).slice(0, 10) : '-' }
+function canManageFile(item) { return item.scope === 'private' || isAdmin.value }
 function toUsers() { uni.redirectTo({ url: '/pages/admin/users' }) }
 function toUsage() { uni.redirectTo({ url: '/pages/admin/usage' }) }
 function toAnnouncements() { uni.redirectTo({ url: '/pages/admin/announcements' }) }

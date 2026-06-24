@@ -14,8 +14,6 @@ class UserCenterOut(BaseModel):
 class ProfileUpdateIn(BaseModel):
     username: str | None = Field(None, max_length=20)
     email: EmailStr | None = None
-    email_code: str | None = Field(None, min_length=4, max_length=4)
-    current_password: str | None = Field(None, min_length=6, max_length=20)
 
     @field_validator("username")
     @classmethod
@@ -26,11 +24,6 @@ class ProfileUpdateIn(BaseModel):
         if len(value) < 2:
             raise ValueError("用户名至少需要 2 个非空字符")
         return value
-
-    @field_validator("email_code", "current_password", mode="before")
-    @classmethod
-    def empty_string_as_none(cls, value: str | None):
-        return None if value == "" else value
 
     @model_validator(mode="after")
     def at_least_one_field(self):

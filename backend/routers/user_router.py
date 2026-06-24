@@ -1,10 +1,8 @@
 from fastapi import APIRouter, Depends, HTTPException
-from redis.asyncio import Redis
 from sqlalchemy import func, select
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from core.auth import AuthHandler
-from core.redis_client import get_redis_client
 from dependencies import get_session
 from models.user import LoginRecord, User
 from repository.user_repo import UserRepository
@@ -43,26 +41,12 @@ async def get_user_center(
 async def update_profile(
         data: ProfileUpdateIn,
         user: User = Depends(auth_handler.current_user_dependency),
-        session: AsyncSession = Depends(get_session),
-        redis_client: Redis = Depends(get_redis_client)):
-    repo = UserRepository(session)
+        session: AsyncSession = Depends(get_session)):
+    if data.email is not None and str(data.email) != user.email:
+        raise HTTPException(status_code=400, detail="邮箱为注册账号，不支持修改")
 
     if data.username is not None:
         user.username = data.username.strip()
-
-    new_email = str(data.email) if data.email is not None else user.email
-    if new_email != user.email:
-        if not data.current_password or not user.check_password(data.current_password):
-            raise HTTPException(status_code=400, detail="当前密码错误")
-        if not data.email_code:
-            raise HTTPException(status_code=400, detail="修改邮箱需要验证码")
-        stored_code = await redis_client.get(new_email)
-        if stored_code != data.email_code:
-            raise HTTPException(status_code=400, detail="验证码错误或已过期")
-        if await repo.email_belongs_to_other_user(new_email, user.id):
-            raise HTTPException(status_code=400, detail="该邮箱已被其他账号使用")
-        user.email = new_email
-        await redis_client.delete(new_email)
 
     await session.commit()
     await session.refresh(user)
