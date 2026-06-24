@@ -56,7 +56,7 @@ async function updateStatus(item, isActive) {
 }
 function back() { uni.navigateBack() }
 function toUsage() { uni.redirectTo({ url: '/pages/admin/usage' }) }
-function toKnowledge() { uni.navigateTo({ url: '/pages/knowledge/manage' }) }
+function toKnowledge() { uni.redirectTo({ url: '/pages/knowledge/manage' }) }
 function toAnnouncements() { uni.redirectTo({ url: '/pages/admin/announcements' }) }
 </script>
 <style scoped>

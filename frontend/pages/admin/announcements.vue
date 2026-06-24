@@ -97,7 +97,7 @@ function formatDate(value) { const d = new Date(value); return `${d.getFullYear(
 function toast(title) { uni.showToast({ title, icon: 'none', duration: 2600 }) }
 function toUsers() { uni.redirectTo({ url: '/pages/admin/users' }) }
 function toUsage() { uni.redirectTo({ url: '/pages/admin/usage' }) }
-function toKnowledge() { uni.navigateTo({ url: '/pages/knowledge/manage' }) }
+function toKnowledge() { uni.redirectTo({ url: '/pages/knowledge/manage' }) }
 function back() { uni.navigateBack() }
 </script>
 

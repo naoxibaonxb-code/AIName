@@ -86,7 +86,7 @@ function formatDay(value) { const d = new Date(`${value}T00:00:00`); return `${S
 function formatDateTime(value) { const d = new Date(value); return `${String(d.getMonth() + 1).padStart(2, '0')}.${String(d.getDate()).padStart(2, '0')} ${String(d.getHours()).padStart(2, '0')}:${String(d.getMinutes()).padStart(2, '0')}` }
 function endpointName(value) { return ({ generate: '首次生成', feedback: '反馈调整', regenerate: '重新生成' })[value] || value }
 function toUsers() { uni.redirectTo({ url: '/pages/admin/users' }) }
-function toKnowledge() { uni.navigateTo({ url: '/pages/knowledge/manage' }) }
+function toKnowledge() { uni.redirectTo({ url: '/pages/knowledge/manage' }) }
 function toAnnouncements() { uni.redirectTo({ url: '/pages/admin/announcements' }) }
 function back() { uni.navigateBack() }
 </script>
