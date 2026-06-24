@@ -85,15 +85,13 @@ async def register(
 async def login(
         data: LoginIn,
         request: Request,
-        session: AsyncSession = Depends(get_session)):
+    session: AsyncSession = Depends(get_session)):
     user_repo = UserRepository(session)
     user: User | None = await user_repo.get_by_email(str(data.email))
-    if not user:
-        raise HTTPException(status_code=400, detail="该用户不存在")
+    if not user or not user.check_password(data.password):
+        raise HTTPException(status_code=400, detail="邮箱或密码错误")
     if not user.is_active:
         raise HTTPException(status_code=403, detail="账号已被禁用，请联系管理员")
-    if not user.check_password(data.password):
-        raise HTTPException(status_code=400, detail="邮箱或密码错误")
 
     await user_repo.add_login_record(
         user_id=user.id,

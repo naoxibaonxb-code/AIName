@@ -47,7 +47,12 @@ class AuthHandler:
             self,
             auth: HTTPAuthorizationCredentials,
             session: AsyncSession) -> User:
-        user_id = int(self.decode_access_token(auth.credentials))
+        try:
+            user_id = int(self.decode_access_token(auth.credentials))
+        except ValueError as exc:
+            raise HTTPException(
+                status_code=HTTP_403_FORBIDDEN, detail="Token非法或已损坏"
+            ) from exc
         user = await session.get(User, user_id)
         if not user or user.deleted_at is not None:
             raise HTTPException(

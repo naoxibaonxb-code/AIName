@@ -46,6 +46,17 @@ app.add_middleware(
     allow_headers=["*"],
 )
 
+
+@app.middleware("http")
+async def privacy_headers(request, call_next):
+    response = await call_next(request)
+    if request.url.path != "/health":
+        response.headers.setdefault("Cache-Control", "no-store")
+        response.headers.setdefault("Pragma", "no-cache")
+    response.headers.setdefault("X-Content-Type-Options", "nosniff")
+    return response
+
+
 app.include_router(auth_router)
 app.include_router(announcement_router)
 app.include_router(name_router)

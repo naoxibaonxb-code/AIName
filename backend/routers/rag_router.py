@@ -22,6 +22,14 @@ ALLOWED_SUFFIXES = {".pdf", ".txt"}
 MAX_FILE_SIZE = 10 * 1024 * 1024
 
 
+def _knowledge_file_out(record: KnowledgeFile, user: User) -> KnowledgeFileOut:
+    data = KnowledgeFileOut.model_validate(record)
+    if user.role != "admin" and record.scope == "public":
+        data.user_id = None
+        data.error_message = None
+    return data
+
+
 @router.get("/files", response_model=list[KnowledgeFileOut])
 async def list_files(
         scope: Annotated[Literal["private", "public", "all"], Query()] = "private",
@@ -42,7 +50,7 @@ async def list_files(
         .where(*filters)
         .order_by(KnowledgeFile.uploaded_at.desc())
     )
-    return list(result)
+    return [_knowledge_file_out(item, user) for item in result]
 
 
 @router.get("/stats", response_model=KnowledgeStatsOut)
@@ -129,7 +137,7 @@ async def upload_file(
         record.error_message = "知识库任务发送失败，请稍后重试"
         await session.commit()
         raise HTTPException(status_code=503, detail=record.error_message) from exc
-    return record
+    return _knowledge_file_out(record, user)
 
 
 def _ensure_file_permission(record: KnowledgeFile, user: User) -> None:
@@ -179,7 +187,7 @@ async def update_file(
 
     await session.commit()
     await session.refresh(record)
-    return record
+    return _knowledge_file_out(record, user)
 
 
 @router.delete("/files/{file_id}", status_code=204)

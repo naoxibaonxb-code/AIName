@@ -9,11 +9,11 @@ class KnowledgeFileOut(BaseModel):
     model_config = ConfigDict(from_attributes=True)
 
     id: int
-    user_id: int
+    user_id: int | None = None
     original_name: str
     scope: str
     status: str
-    error_message: str | None
+    error_message: str | None = None
     file_size: int
     chunk_count: int
     is_enabled: bool
