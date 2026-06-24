@@ -16,6 +16,7 @@ SQLAlchemy==2.0.49
 alembic==1.13.2
 aiomysql==0.3.2
 redis==7.4.0
+aio-pika==9.5.5
 psycopg==3.3.4
 psycopg-binary==3.3.4
 psycopg-pool==3.3.1

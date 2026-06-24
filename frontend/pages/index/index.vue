@@ -11,6 +11,7 @@
     <view class="panel">
       <text class="section-label">01 / 起名类型</text>
       <view class="segments"><view v-for="item in categories" :key="item" :class="['segment', { active: form.category === item }]" @tap="chooseCategory(item)">{{ item }}</view></view>
+      <view class="category-intro"><text class="intro-title">{{ categoryCopy.title }}</text><text class="intro-content">{{ categoryCopy.content }}</text></view>
       <view v-if="form.category === '企业名'" class="knowledge-box">
         <view class="knowledge-head"><view><text class="label">企业知识库</text><text class="knowledge-tip">上传品牌资料、行业规范或产品介绍，AI 将优先参考</text></view><view class="knowledge-actions"><button class="manage-btn" @tap="toKnowledge">管理</button><button class="upload-btn" :disabled="uploading" @tap="chooseKnowledgeFile">{{ uploading ? `${uploadProgress}%` : '上传资料' }}</button></view></view>
         <view v-if="!knowledgeFiles.length" class="knowledge-empty">支持 PDF、TXT，单个文件不超过 10MB</view>
@@ -23,8 +24,8 @@
       <view v-if="form.category === '人名'" class="field"><text class="label">姓氏 <text class="required">必填</text></text><input v-model.trim="form.surname" class="input" maxlength="4" placeholder="例如：林" /></view>
       <view v-if="form.category === '人名'" class="field"><text class="label">性别偏好</text><view class="chips"><view v-for="item in genders" :key="item" :class="['chip', { active: form.gender === item }]" @tap="form.gender = item">{{ item }}</view></view></view>
       <view class="field"><text class="label">名字长度 <text class="hint">{{ lengthHint }}</text></text><view class="chips"><view v-for="item in availableLengths" :key="item" :class="['chip', { active: form.length === item }]" @tap="form.length = item">{{ item }}</view></view></view>
-      <view class="field"><text class="label">更多期待 <text class="hint">选填</text></text><textarea v-model="form.other" class="textarea" maxlength="300" placeholder="说说你期待的气质、行业、意象或故事..." /></view>
-      <view class="field"><text class="label">避开的字 <text class="hint">用逗号分隔</text></text><input v-model="excludeText" class="input" placeholder="例如：强, 伟" /></view>
+      <view class="field"><text class="label">{{ categoryCopy.otherLabel }} <text class="hint">{{ categoryCopy.otherHint }}</text></text><textarea v-model="form.other" class="textarea" maxlength="300" :placeholder="categoryCopy.otherPlaceholder" /></view>
+      <view class="field"><text class="label">{{ categoryCopy.excludeLabel }} <text class="hint">用逗号分隔</text></text><input v-model="excludeText" class="input" :placeholder="categoryCopy.excludePlaceholder" /></view>
       <view v-if="user.role !== 'admin'" :class="['quota-card', { exhausted: quotaExhausted }]">
         <view><text class="quota-title">今日免费额度</text><text class="quota-tip">仅成功生成后计入次数</text></view>
         <view class="quota-value"><text>{{ quota.remaining === null ? '--' : quota.remaining }}</text><text>/ {{ quota.daily_limit }}</text></view>
@@ -40,7 +41,7 @@
           <view v-if="item.domain" class="detail"><text class="tag">域名</text><text>{{ item.domain }}</text><text class="status">{{ item.domain_status }}</text></view>
         </view>
       </view>
-      <view v-if="threadId" class="feedback"><text class="label">还想怎么调整？</text><view class="feedback-row"><input v-model.trim="feedbackText" class="feedback-input" placeholder="例如：更现代一些，保留清雅的感觉" /><button class="send" :disabled="feedbackLoading" @tap="sendFeedback">{{ feedbackLoading ? '...' : '调整' }}</button></view></view>
+      <view v-if="threadId" class="feedback"><text class="label">还想怎么调整？</text><view class="feedback-row"><input v-model.trim="feedbackText" class="feedback-input" :placeholder="categoryCopy.feedbackPlaceholder" /><button class="send" :disabled="feedbackLoading" @tap="sendFeedback">{{ feedbackLoading ? '...' : '调整' }}</button></view></view>
     </view>
     <view class="footer">名字，是故事的第一句话</view>
   </view>
@@ -70,8 +71,41 @@ const lengthHints = {
   企业名: '短名更利于传播',
   宠物名: '越短越好叫'
 }
+const categoryCopies = {
+  人名: {
+    title: '为一个人取名',
+    content: '更关注音律、性别气质、文化出处和姓氏搭配，适合写下你期待的性格、祝福或家族偏好。',
+    otherLabel: '名字期待',
+    otherHint: '选填',
+    otherPlaceholder: '例如：清雅、有书卷气，寓意平安从容，最好来自诗经或唐诗...',
+    excludeLabel: '避开的字',
+    excludePlaceholder: '例如：强, 伟, 娟',
+    feedbackPlaceholder: '例如：更清雅一些，保留温润、有出处的感觉'
+  },
+  企业名: {
+    title: '为品牌或公司取名',
+    content: '更关注行业属性、品牌定位、传播记忆点和域名可用性，可结合知识库补充品牌资料。',
+    otherLabel: '品牌诉求',
+    otherHint: '行业、定位、客群',
+    otherPlaceholder: '例如：新能源科技公司，面向年轻用户，希望名字简短、有未来感、适合做品牌...',
+    excludeLabel: '避开的字词',
+    excludePlaceholder: '例如：创, 鑫, 国际',
+    feedbackPlaceholder: '例如：更科技感一些，名字短一点，并保留可注册域名'
+  },
+  宠物名: {
+    title: '为宠物取名',
+    content: '更关注叫起来顺口、亲切好记，以及宠物的外貌、性格、品种或相处故事。',
+    otherLabel: '宠物特点',
+    otherHint: '性格、外貌、品种',
+    otherPlaceholder: '例如：小白猫，胆小但很黏人，希望名字软萌、好叫、不要太复杂...',
+    excludeLabel: '不想使用的字',
+    excludePlaceholder: '例如：球, 豆, 宝',
+    feedbackPlaceholder: '例如：更可爱一点，读起来更短，更适合日常喊'
+  }
+}
 const availableLengths = computed(() => lengthOptions[form.category] || lengthOptions['人名'])
 const lengthHint = computed(() => lengthHints[form.category] || '')
+const categoryCopy = computed(() => categoryCopies[form.category] || categoryCopies['人名'])
 const quotaExhausted = computed(() => user.value.role !== 'admin' && quota.remaining === 0)
 onLoad(() => { const token = uni.getStorageSync('token'); if (!token) return uni.reLaunch({ url: '/pages/login/login' }); user.value = uni.getStorageSync('user') || {} })
 onShow(() => { if (uni.getStorageSync('token')) loadQuota(); loadAnnouncements() })
@@ -207,6 +241,7 @@ async function favoriteName(index) {
 .hero{display:flex;align-items:flex-end;justify-content:space-between;gap:32rpx}.inspiration-link{flex:none;display:flex;align-items:center;gap:16rpx;padding:18rpx 22rpx;border:1px solid rgba(49,92,76,.15);border-radius:20rpx;background:rgba(255,255,255,.48)}.inspiration-link:active{background:#e5ece7}.inspiration-mark{width:52rpx;height:52rpx;border-radius:15rpx;background:#315c4c;color:#fff;display:flex;align-items:center;justify-content:center;font:600 25rpx serif}.inspiration-title,.inspiration-sub{display:block}.inspiration-title{color:#315c4c;font-size:23rpx;font-weight:650}.inspiration-sub{color:#8a8d87;font-size:18rpx;margin-top:4rpx}.name-row{display:flex;align-items:center;justify-content:space-between;gap:18rpx}.favorite-action{flex:none;padding:9rpx 17rpx;border:1px solid #d8c4aa;border-radius:100rpx;color:#9a6a3e;font-size:20rpx}.favorite-action:active{transform:scale(.95)}.favorite-action.active{border-color:#b87a48;background:#f2e5d7;color:#8b562f}.favorite-action.loading{opacity:.65}
 .quota-card{display:flex;align-items:center;justify-content:space-between;gap:20rpx;margin:8rpx 0 24rpx;padding:20rpx 24rpx;border:1px solid #d8e2dc;border-radius:17rpx;background:#edf3ef;color:#315c4c}.quota-card.exhausted{border-color:#e5c9bd;background:#f7ece7;color:#97543e}.quota-title,.quota-tip{display:block}.quota-title{font-size:24rpx;font-weight:650}.quota-tip{margin-top:5rpx;color:#858d87;font-size:19rpx}.quota-value{display:flex;align-items:baseline;gap:5rpx;white-space:nowrap}.quota-value text:first-child{font:600 40rpx serif}.quota-value text:last-child{font-size:20rpx;color:#7d8881}.admin-quota{background:#eee9df;border-color:#e2d6c7;color:#8d623f}.admin-quota-mark{font:600 42rpx serif}.generate[disabled]{opacity:.82}
 .announcements{width:calc(100% - 56rpx);max-width:900px;margin:-20rpx auto 34rpx}.announcement{display:flex;gap:18rpx;padding:22rpx 24rpx;margin-bottom:14rpx;border:1px solid #dedbd2;border-radius:20rpx;background:rgba(255,255,255,.66);box-shadow:0 10rpx 30rpx rgba(66,61,50,.05)}.announcement.warning{border-color:#e7c7bf;background:#fff4ef}.announcement.notice{border-color:#e1d3bf;background:#fbf5eb}.announcement-tag{flex:none;height:42rpx;line-height:42rpx;padding:0 15rpx;border-radius:100rpx;background:#e3ece7;color:#315c4c;font-size:19rpx;font-weight:650}.announcement.warning .announcement-tag{background:#f1ded9;color:#a04c42}.announcement.notice .announcement-tag{background:#eee3d5;color:#9a6b43}.announcement-title,.announcement-content{display:block}.announcement-title{font-size:25rpx;font-weight:700;color:#29312d}.announcement-content{margin-top:7rpx;color:#6f746e;font-size:21rpx;line-height:1.55}
+.category-intro{margin:-22rpx 0 34rpx;padding:22rpx 24rpx;border:1px solid #e1dfd7;border-radius:18rpx;background:#fbfaf6}.intro-title,.intro-content{display:block}.intro-title{color:#315c4c;font-size:26rpx;font-weight:700}.intro-content{margin-top:8rpx;color:#72766f;font-size:22rpx;line-height:1.6}
 @media(max-width:480px){.knowledge-box{padding:24rpx 20rpx}.knowledge-head{gap:14rpx}.knowledge-tip{font-size:19rpx}.upload-btn{width:132rpx}.knowledge-file{align-items:flex-start;flex-wrap:wrap}.file-info{flex:1 1 calc(100% - 84rpx)}.file-status{margin-left:80rpx}}
 @media(max-width:360px){.knowledge-head{flex-direction:column}.knowledge-actions,.upload-btn,.manage-btn{width:100%}.file-status{margin-left:0}}
 @media(max-width:650px){.hero{align-items:flex-start;flex-direction:column}.inspiration-link{align-self:stretch;justify-content:flex-start}.inspiration-sub{font-size:19rpx}}

@@ -3,16 +3,16 @@ from uuid import uuid4
 
 from typing import Annotated, Literal
 
-from fastapi import APIRouter, BackgroundTasks, Depends, File, HTTPException, Query, UploadFile
+from fastapi import APIRouter, Depends, File, HTTPException, Query, UploadFile
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from core.auth import AuthHandler
-from core.rag_service import delete_knowledge_vectors, index_knowledge_file
 from dependencies import get_session
 from models.knowledge import KnowledgeFile
 from models.user import User
 from schemas.knowledge import KnowledgeFileOut, KnowledgeFileUpdateIn, KnowledgeStatsOut
+from services.knowledge_queue import publish_knowledge_task
 
 router = APIRouter(prefix="/knowledge", tags=["knowledge"])
 auth_handler = AuthHandler()
@@ -73,7 +73,6 @@ async def knowledge_stats(
 
 @router.post("/upload", response_model=KnowledgeFileOut, status_code=202)
 async def upload_file(
-        background_tasks: BackgroundTasks,
         scope: Annotated[Literal["private", "public"], Query()] = "private",
         file: UploadFile = File(...),
         user: User = Depends(auth_handler.current_user_dependency),
@@ -117,9 +116,19 @@ async def upload_file(
     await session.commit()
     await session.refresh(record)
 
-    background_tasks.add_task(
-        index_knowledge_file, record.id, str(file_path), user.id, scope
-    )
+    try:
+        await publish_knowledge_task(
+            action="index",
+            record_id=record.id,
+            file_path=str(file_path),
+            user_id=user.id,
+            scope=scope,
+        )
+    except Exception as exc:
+        record.status = "failed"
+        record.error_message = "知识库任务发送失败，请稍后重试"
+        await session.commit()
+        raise HTTPException(status_code=503, detail=record.error_message) from exc
     return record
 
 
@@ -134,7 +143,6 @@ def _ensure_file_permission(record: KnowledgeFile, user: User) -> None:
 async def update_file(
         file_id: int,
         data: KnowledgeFileUpdateIn,
-        background_tasks: BackgroundTasks,
         user: User = Depends(auth_handler.current_user_dependency),
         session: AsyncSession = Depends(get_session)):
     record = await session.get(KnowledgeFile, file_id)
@@ -147,15 +155,27 @@ async def update_file(
 
     record.is_enabled = data.is_enabled
     file_path = UPLOAD_DIR / record.stored_name
-    if not data.is_enabled:
-        background_tasks.add_task(
-            delete_knowledge_vectors, record.id, record.user_id, record.scope
-        )
-    elif record.status == "ready" and file_path.exists():
-        record.status = "pending"
-        background_tasks.add_task(
-            index_knowledge_file, record.id, str(file_path), record.user_id, record.scope
-        )
+    try:
+        if not data.is_enabled:
+            await publish_knowledge_task(
+                action="delete",
+                record_id=record.id,
+                user_id=record.user_id,
+                scope=record.scope,
+            )
+        elif record.status == "ready" and file_path.exists():
+            record.status = "pending"
+            await publish_knowledge_task(
+                action="index",
+                record_id=record.id,
+                file_path=str(file_path),
+                user_id=record.user_id,
+                scope=record.scope,
+            )
+    except Exception as exc:
+        raise HTTPException(
+            status_code=503, detail="知识库任务发送失败，请稍后重试"
+        ) from exc
 
     await session.commit()
     await session.refresh(record)
@@ -165,7 +185,6 @@ async def update_file(
 @router.delete("/files/{file_id}", status_code=204)
 async def delete_file(
         file_id: int,
-        background_tasks: BackgroundTasks,
         user: User = Depends(auth_handler.current_user_dependency),
         session: AsyncSession = Depends(get_session)):
     record = await session.get(KnowledgeFile, file_id)
@@ -174,9 +193,17 @@ async def delete_file(
     _ensure_file_permission(record, user)
 
     file_path = UPLOAD_DIR / record.stored_name
-    background_tasks.add_task(
-        delete_knowledge_vectors, record.id, record.user_id, record.scope
-    )
+    try:
+        await publish_knowledge_task(
+            action="delete",
+            record_id=record.id,
+            user_id=record.user_id,
+            scope=record.scope,
+        )
+    except Exception as exc:
+        raise HTTPException(
+            status_code=503, detail="知识库任务发送失败，请稍后重试"
+        ) from exc
     await session.delete(record)
     await session.commit()
     file_path.unlink(missing_ok=True)

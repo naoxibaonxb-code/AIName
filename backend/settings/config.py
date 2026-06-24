@@ -30,6 +30,23 @@ class Settings:
     def redis_url(self) -> str:
         return f"redis://{self.REDIS_HOST}:{self.REDIS_PORT}/{self.REDIS_DB}"
 
+    RABBITMQ_HOST = os.getenv("RABBITMQ_HOST", "127.0.0.1")
+    RABBITMQ_PORT = int(os.getenv("RABBITMQ_PORT", "5672"))
+    RABBITMQ_USER = quote_plus(os.getenv("RABBITMQ_USER", "admin"))
+    RABBITMQ_PASSWORD = quote_plus(os.getenv("RABBITMQ_PASSWORD", "123456"))
+    RABBITMQ_VHOST = os.getenv("RABBITMQ_VHOST", "/")
+    RABBITMQ_KNOWLEDGE_QUEUE = os.getenv(
+        "RABBITMQ_KNOWLEDGE_QUEUE", "ainame.knowledge.tasks"
+    )
+
+    @property
+    def rabbitmq_url(self) -> str:
+        vhost = quote_plus(self.RABBITMQ_VHOST)
+        return (
+            f"amqp://{self.RABBITMQ_USER}:{self.RABBITMQ_PASSWORD}"
+            f"@{self.RABBITMQ_HOST}:{self.RABBITMQ_PORT}/{vhost}"
+        )
+
     MAIL_USERNAME: str | None = os.getenv("MAIL_USERNAME")
     MAIL_PASSWORD: SecretStr | None = SecretStr(os.getenv("MAIL_PASSWORD") or "")
     MAIL_SERVER: str | None = os.getenv("MAIL_SERVER")

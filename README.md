@@ -58,6 +58,7 @@ AIName is an AI-powered naming system for personal names, company names, and pet
 - MySQL
 - PostgreSQL checkpoint for LangGraph
 - Redis
+- RabbitMQ
 - LangChain / LangGraph
 - DeepSeek
 - Chroma
@@ -108,6 +109,7 @@ AIName/
 - MySQL
 - PostgreSQL
 - Redis
+- RabbitMQ
 - Ollama，本地 Embedding 模型：`nomic-embed-text`
 - DeepSeek API Key
 - 邮箱 SMTP 服务
@@ -151,6 +153,12 @@ REDIS_HOST=127.0.0.1
 REDIS_PORT=6379
 REDIS_DB=0
 
+RABBITMQ_HOST=127.0.0.1
+RABBITMQ_PORT=5672
+RABBITMQ_USER=admin
+RABBITMQ_PASSWORD=123456
+RABBITMQ_KNOWLEDGE_QUEUE=ainame.knowledge.tasks
+
 JWT_SECRET_KEY=replace-with-a-strong-secret
 DEEPSEEK_API_KEY=your-deepseek-api-key
 
@@ -169,6 +177,12 @@ alembic upgrade head
 
 ```bash
 uvicorn main:app --reload
+```
+
+启动知识库消费者。该进程负责消费 RabbitMQ 队列中的知识库解析和删除任务：
+
+```bash
+python rag_worker.py
 ```
 
 接口文档：
@@ -212,6 +226,9 @@ alembic upgrade head
 # 后端启动
 uvicorn main:app --reload
 
+# 知识库消费者
+python rag_worker.py
+
 # 设置管理员
 python create_admin.py admin@example.com
 ```
@@ -221,6 +238,8 @@ python create_admin.py admin@example.com
 - 不要提交 `backend/.env`。
 - 不要提交真实 API Key、数据库密码、邮箱授权码。
 - Redis 未启动时，起名接口会因限流保护而不可用。
+- RabbitMQ 未启动时，知识库上传、启停和删除任务无法投递。
+- 使用知识库上传功能时，除了后端 API 服务，还需要运行 `python rag_worker.py`。
 - 使用知识库功能前，需要确保 Ollama 和 Embedding 模型可用。
 - 导出 PDF / PNG 依赖 `reportlab` 和 `Pillow`。
 - 生产环境应限制 CORS 域名，并使用强随机 `JWT_SECRET_KEY`。
@@ -249,7 +268,7 @@ AIName is a full-stack AI naming application built with FastAPI and Vue 3 / uni-
 
 ### Stack
 
-Backend: FastAPI, SQLAlchemy, Alembic, MySQL, PostgreSQL, Redis, LangChain, LangGraph, DeepSeek, Chroma, Ollama Embeddings, ReportLab, Pillow.
+Backend: FastAPI, SQLAlchemy, Alembic, MySQL, PostgreSQL, Redis, RabbitMQ, LangChain, LangGraph, DeepSeek, Chroma, Ollama Embeddings, ReportLab, Pillow.
 
 Frontend: Vue 3, uni-app, Composition API, and `uni.request`.
 
@@ -260,6 +279,7 @@ cd backend
 pip install -r requirements.txt
 alembic upgrade head
 uvicorn main:app --reload
+python rag_worker.py
 ```
 
 Open `frontend` with HBuilderX, configure `frontend/config.js`, and run it in a browser, mobile device, or mini-program environment.
