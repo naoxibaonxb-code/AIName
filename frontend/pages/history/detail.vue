@@ -6,7 +6,7 @@
       <view class="overview">
         <view class="overview-top"><text class="category">{{ detail.category }}</text><text class="date">{{ formatDate(detail.created_at) }}</text></view>
         <view class="overview-title">{{ detail.round_count }} 轮命名灵感</view>
-        <view class="conditions"><text v-if="detail.conditions.surname">姓氏 {{ detail.conditions.surname }}</text><text>{{ detail.conditions.gender }}</text><text>{{ detail.conditions.length }}</text><text v-if="detail.conditions.other">{{ detail.conditions.other }}</text></view>
+        <view class="conditions"><text v-if="detail.conditions.surname">姓氏 {{ detail.conditions.surname }}</text><text>{{ detail.conditions.gender }}</text><text>{{ detail.conditions.length }}</text><text v-if="detail.conditions.use_bazi">八字五行</text><text v-if="detail.conditions.brand_tone">调性 {{ detail.conditions.brand_tone }}</text><text v-if="detail.conditions.target_audience">客群 {{ detail.conditions.target_audience }}</text><text v-if="detail.conditions.ip_setting">含角色设定</text><text v-if="detail.conditions.other">{{ detail.conditions.other }}</text></view>
         <view class="retention">该记录将保留至 {{ formatDate(detail.expires_at) }}</view>
       </view>
 
@@ -20,6 +20,7 @@
               <view class="name-head"><view class="name">{{ item.name }}</view><view :class="['favorite', { active: favoriteId(round.round_number, item.name) }]" @tap="toggleFavorite(round.round_number, index, item.name)">{{ favoriteId(round.round_number, item.name) ? '已收藏' : '收藏' }}</view></view>
               <view class="moral">{{ item.moral }}</view>
               <view class="detail-row"><text>出处</text><view>{{ item.reference }}</view></view>
+              <view v-if="item.analysis" class="detail-row"><text>推演</text><view>{{ item.analysis }}</view></view>
               <view v-if="item.domain" class="detail-row"><text>域名</text><view>{{ item.domain }} · {{ item.domain_status }}</view></view>
             </view>
           </view>
@@ -35,6 +36,7 @@
 import { ref } from 'vue'
 import { onLoad } from '@dcloudio/uni-app'
 import { api } from '../../utils/request.js'
+import { safeBack } from '../../utils/navigation.js'
 
 const historyId = ref(''), detail = ref(null), loading = ref(true), regenerating = ref(false), favoriteMap = ref({})
 
@@ -60,14 +62,14 @@ async function toggleFavorite(round, index, name) {
     else { const result = await api.addFavorite({ session_id: historyId.value, round_number: round, name_index: index }); favoriteMap.value = { ...favoriteMap.value, [key]: result.id }; uni.showToast({ title: '已加入收藏', icon: 'success' }) }
   } catch (e) { toast(e.message) }
 }
-async function regenerate() { if (regenerating.value) return; regenerating.value = true; try { const result = await api.regenerateHistory(historyId.value); uni.showToast({ title: '已生成新方案' }); setTimeout(() => uni.redirectTo({ url: `/pages/history/detail?id=${result.thread_id}` }), 500) } catch (e) { toast(e.message) } finally { regenerating.value = false } }
+async function regenerate() { if (regenerating.value) return; regenerating.value = true; try { const result = await api.regenerateHistory(historyId.value); uni.showToast({ title: '已生成新方案' }); setTimeout(() => uni.navigateTo({ url: `/pages/history/detail?id=${result.thread_id}` }), 500) } catch (e) { toast(e.message) } finally { regenerating.value = false } }
 function exportItem() { uni.showActionSheet({ itemList: ['导出 JSON', '导出 CSV'], success: ({ tapIndex }) => exportFile(tapIndex === 0 ? 'json' : 'csv') }) }
 async function exportFile(format) { uni.showLoading({ title: '正在导出' }); try { const path = await api.downloadHistory(historyId.value, format); uni.hideLoading(); uni.openDocument({ filePath: path, showMenu: true, fail: () => toast('文件已导出，请在下载记录中查看') }) } catch (e) { uni.hideLoading(); toast(e.message) } }
-function remove() { uni.showModal({ title: '删除起名历史', content: '收藏的名字不会受到影响，确定删除吗？', confirmColor: '#a84f44', success: async ({ confirm }) => { if (!confirm) return; try { await api.deleteHistory(historyId.value); uni.showToast({ title: '历史已删除' }); setTimeout(() => uni.navigateBack(), 500) } catch (e) { toast(e.message) } } }) }
+function remove() { uni.showModal({ title: '删除起名历史', content: '收藏的名字不会受到影响，确定删除吗？', confirmColor: '#a84f44', success: async ({ confirm }) => { if (!confirm) return; try { await api.deleteHistory(historyId.value); uni.showToast({ title: '历史已删除' }); setTimeout(() => safeBack('/pages/history/history'), 500) } catch (e) { toast(e.message) } } }) }
 function formatDate(value) { const d = new Date(value); return `${d.getFullYear()}年${d.getMonth() + 1}月${d.getDate()}日` }
 function formatDateTime(value) { const d = new Date(value); return `${d.getMonth() + 1}月${d.getDate()}日 ${String(d.getHours()).padStart(2, '0')}:${String(d.getMinutes()).padStart(2, '0')}` }
 function toast(title) { uni.showToast({ title, icon: 'none', duration: 2800 }) }
-function back() { uni.navigateBack() }
+function back() { safeBack('/pages/history/history') }
 </script>
 
 <style scoped>

@@ -24,6 +24,7 @@
 import { computed, ref } from 'vue'
 import { onLoad } from '@dcloudio/uni-app'
 import { api } from '../../utils/request.js'
+import { safeBack } from '../../utils/navigation.js'
 const users = ref([]), search = ref(''), total = ref(0), page = ref(1), loading = ref(false), changingId = ref(null)
 const pageSize = 20
 const totalPages = computed(() => Math.max(1, Math.ceil(total.value / pageSize)))
@@ -31,7 +32,7 @@ onLoad(() => {
   const user = uni.getStorageSync('user') || {}
   if (user.role !== 'admin') {
     uni.showToast({ title: '需要管理员权限', icon: 'none' })
-    return setTimeout(() => uni.navigateBack(), 500)
+    return setTimeout(() => safeBack('/pages/index/index'), 500)
   }
   loadUsers()
 })
@@ -54,10 +55,10 @@ async function updateStatus(item, isActive) {
   catch (e) { uni.showToast({ title: e.message, icon: 'none' }) }
   finally { changingId.value = null }
 }
-function back() { uni.navigateBack() }
-function toUsage() { uni.redirectTo({ url: '/pages/admin/usage' }) }
-function toKnowledge() { uni.redirectTo({ url: '/pages/knowledge/manage' }) }
-function toAnnouncements() { uni.redirectTo({ url: '/pages/admin/announcements' }) }
+function back() { safeBack('/pages/index/index') }
+function toUsage() { uni.navigateTo({ url: '/pages/admin/usage' }) }
+function toKnowledge() { uni.navigateTo({ url: '/pages/knowledge/manage' }) }
+function toAnnouncements() { uni.navigateTo({ url: '/pages/admin/announcements' }) }
 </script>
 <style scoped>
 .page{min-height:100vh;background:#f4f0e8;color:#29312d}.safe{height:var(--status-bar-height)}.topbar{height:130rpx;display:flex;align-items:center;padding:0 34rpx;border-bottom:1px solid rgba(47,59,51,.1);background:rgba(244,240,232,.94)}.back,.spacer{width:76rpx}.back{font-size:58rpx;color:#315c4c}.topbar>view:nth-child(2){flex:1;text-align:center}.eyebrow{font-size:16rpx;letter-spacing:3rpx;color:#a76d3c}.title{font-size:34rpx;font-weight:650;margin-top:4rpx}.content{padding:34rpx 28rpx 70rpx;max-width:1000rpx;margin:auto}.summary{height:180rpx;padding:0 38rpx;border-radius:26rpx;background:linear-gradient(135deg,#315c4c,#456f5e);color:#fff;display:flex;align-items:center;justify-content:space-between;box-shadow:0 16rpx 36rpx rgba(49,92,76,.2)}.summary-label{font-size:24rpx;color:#dbe7e1}.count{font:600 58rpx serif;margin-top:8rpx}.summary-mark{font:italic 48rpx serif;color:rgba(255,255,255,.28)}.toolbar{display:flex;gap:14rpx;margin:30rpx 0}.search{flex:1;height:86rpx;padding:0 24rpx;background:#fff;border:1px solid #dedbd2;border-radius:16rpx;font-size:25rpx}.search-btn{width:140rpx;height:86rpx;line-height:86rpx;padding:0;border-radius:16rpx;background:#315c4c;color:#fff;font-size:25rpx}.list-card{background:rgba(255,255,255,.78);border-radius:24rpx;padding:0 28rpx;box-shadow:0 16rpx 50rpx rgba(66,61,50,.07)}.user-row{display:flex;align-items:center;gap:22rpx;padding:30rpx 0;border-bottom:1px solid #e8e5dd}.user-row:last-child{border-bottom:none}.avatar{flex:none;width:76rpx;height:76rpx;border-radius:22rpx;background:#e3ece7;color:#315c4c;display:flex;align-items:center;justify-content:center;font-size:30rpx;font-weight:600}.avatar.disabled{background:#eee9e5;color:#9a8278}.info{flex:1;min-width:0}.name-line{display:flex;align-items:center;gap:12rpx}.name{font-size:27rpx;font-weight:650}.badge{padding:4rpx 12rpx;border-radius:100rpx;font-size:18rpx}.badge.normal{background:#e4f0e8;color:#3d7557}.badge.blocked{background:#f4e5e1;color:#a74d42}.email,.uid{display:block;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}.email{font-size:23rpx;color:#717670;margin-top:8rpx}.uid{font-size:19rpx;color:#aaa79f;margin-top:5rpx}.action{flex:none;width:116rpx;height:68rpx;line-height:68rpx;padding:0;border-radius:14rpx;font-size:22rpx;background:transparent}.action.danger{border:1px solid #dcb6af;color:#a84f44}.action.restore{border:1px solid #aac8b7;color:#397155}.empty{text-align:center;color:#92938d;padding:100rpx 20rpx;font-size:25rpx}.pagination{display:flex;align-items:center;justify-content:center;gap:28rpx;margin-top:32rpx;font-size:23rpx;color:#777}.page-btn{width:150rpx;height:70rpx;line-height:70rpx;padding:0;background:#fff;color:#315c4c;border-radius:14rpx;font-size:22rpx}.page-btn[disabled]{color:#aaa;background:#e8e6df}@media(min-width:700px){.summary{height:140px}.user-row{padding:22px 0}.content{padding-top:28px}}

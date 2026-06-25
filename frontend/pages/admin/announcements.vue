@@ -37,6 +37,7 @@
 import { computed, reactive, ref } from 'vue'
 import { onLoad } from '@dcloudio/uni-app'
 import { api } from '../../utils/request.js'
+import { safeBack } from '../../utils/navigation.js'
 
 const types = [{ label: '普通', value: 'info' }, { label: '通知', value: 'notice' }, { label: '重要', value: 'warning' }]
 const form = reactive({ title: '', content: '', type: 'info', is_active: true })
@@ -48,7 +49,7 @@ onLoad(() => {
   const user = uni.getStorageSync('user') || {}
   if (user.role !== 'admin') {
     uni.showToast({ title: '需要管理员权限', icon: 'none' })
-    return setTimeout(() => uni.navigateBack(), 500)
+    return setTimeout(() => safeBack('/pages/index/index'), 500)
   }
   load()
 })
@@ -95,10 +96,10 @@ function changePage(step) { page.value += step; load(); uni.pageScrollTo({ scrol
 function typeLabel(value) { return ({ info: '普通', notice: '通知', warning: '重要' })[value] || value }
 function formatDate(value) { const d = new Date(value); return `${d.getFullYear()}.${String(d.getMonth() + 1).padStart(2, '0')}.${String(d.getDate()).padStart(2, '0')}` }
 function toast(title) { uni.showToast({ title, icon: 'none', duration: 2600 }) }
-function toUsers() { uni.redirectTo({ url: '/pages/admin/users' }) }
-function toUsage() { uni.redirectTo({ url: '/pages/admin/usage' }) }
-function toKnowledge() { uni.redirectTo({ url: '/pages/knowledge/manage' }) }
-function back() { uni.navigateBack() }
+function toUsers() { uni.navigateTo({ url: '/pages/admin/users' }) }
+function toUsage() { uni.navigateTo({ url: '/pages/admin/usage' }) }
+function toKnowledge() { uni.navigateTo({ url: '/pages/knowledge/manage' }) }
+function back() { safeBack('/pages/index/index') }
 </script>
 
 <style scoped>

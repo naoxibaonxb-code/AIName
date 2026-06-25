@@ -31,6 +31,7 @@ from schemas.history import (
 )
 from schemas.name import CategoryLiteral, NameWithThreadOut
 from schemas.response import ResponseOut
+from core.long_term_memory import remember_text
 from services.favorite_export import favorite_pdf, favorite_png
 from services.usage_control import acquire_generation_permit
 
@@ -103,6 +104,23 @@ async def create_favorite(
     ).model_dump(mode="json")
     favorite = await repo.create_favorite(
         user_id, history, data.round_number, snapshot
+    )
+    await remember_text(
+        user_id=user_id,
+        category=history.category,
+        source="favorite",
+        source_id=str(favorite.id),
+        content=(
+            f"用户收藏了【{history.category}】名字“{snapshot.get('name', '')}”。"
+            f"出处：{snapshot.get('reference', '')}。"
+            f"寓意：{snapshot.get('moral', '')}。"
+            f"推演：{snapshot.get('analysis', '')}。"
+        ),
+        metadata={
+            "favorite_id": favorite.id,
+            "session_id": history.id,
+            "round_number": data.round_number,
+        },
     )
     return FavoriteNameOut.model_validate(favorite)
 
@@ -202,8 +220,12 @@ async def delete_history(
         raise HTTPException(status_code=404, detail="起名历史不存在")
     try:
         await delete_naming_thread(history.id)
-    except Exception:
+    except Exception as exc:
         logger.exception("删除 LangGraph 会话失败: %s", history.id)
+        raise HTTPException(
+            status_code=503,
+            detail="历史清理暂时失败，请稍后重试",
+        ) from exc
     await repo.delete_history(history)
     return ResponseOut(message="起名历史已删除")
 
@@ -239,11 +261,13 @@ async def regenerate_history(
             commit=False,
         )
         await UsageRepository(session).record_call(
-            user_id, "regenerate", True, token_usage, request_id=request_id
+            user_id, "regenerate", True, token_usage, request_id=request_id,
+            count_daily=permit.quota_source == "free",
         )
         return NameWithThreadOut(thread_id=request_id, names=names)
     except NamingServiceError as exc:
         await session.rollback()
+        await permit.refund_paid_credit(session)
         await UsageRepository(session).record_call(
             user_id, "regenerate", False,
             getattr(exc, "token_usage", token_usage),
@@ -252,6 +276,7 @@ async def regenerate_history(
         raise HTTPException(status_code=503, detail=NAMING_BUSY_MESSAGE) from exc
     except Exception as exc:
         await session.rollback()
+        await permit.refund_paid_credit(session)
         try:
             await UsageRepository(session).record_call(
                 user_id, "regenerate", False, token_usage,
@@ -285,7 +310,7 @@ async def export_history(
     else:
         output = io.StringIO()
         writer = csv.writer(output)
-        writer.writerow(["轮次", "反馈", "名字", "出处", "寓意", "域名", "域名状态"])
+        writer.writerow(["轮次", "反馈", "名字", "出处", "寓意", "推演", "域名", "域名状态"])
         for round_item in detail.rounds:
             for name in round_item.names:
                 writer.writerow([
@@ -294,6 +319,7 @@ async def export_history(
                     name.name,
                     name.reference,
                     name.moral,
+                    name.analysis,
                     name.domain,
                     name.domain_status,
                 ])

@@ -42,6 +42,7 @@
 import { computed, reactive, ref } from 'vue'
 import { onLoad } from '@dcloudio/uni-app'
 import { api } from '../../utils/request.js'
+import { safeBack } from '../../utils/navigation.js'
 
 const periods = [7, 30, 90]
 const days = ref(30), summaryLoading = ref(false), callsLoading = ref(false)
@@ -56,7 +57,7 @@ onLoad(() => {
   const user = uni.getStorageSync('user') || {}
   if (user.role !== 'admin') {
     uni.showToast({ title: '需要管理员权限', icon: 'none' })
-    return setTimeout(() => uni.navigateBack(), 500)
+    return setTimeout(() => safeBack('/pages/index/index'), 500)
   }
   loadSummary()
   loadCalls()
@@ -85,10 +86,10 @@ function formatTokens(value = 0) { if (value >= 1000000) return `${(value / 1000
 function formatDay(value) { const d = new Date(`${value}T00:00:00`); return `${String(d.getMonth() + 1).padStart(2, '0')}.${String(d.getDate()).padStart(2, '0')}` }
 function formatDateTime(value) { const d = new Date(value); return `${String(d.getMonth() + 1).padStart(2, '0')}.${String(d.getDate()).padStart(2, '0')} ${String(d.getHours()).padStart(2, '0')}:${String(d.getMinutes()).padStart(2, '0')}` }
 function endpointName(value) { return ({ generate: '首次生成', feedback: '反馈调整', regenerate: '重新生成' })[value] || value }
-function toUsers() { uni.redirectTo({ url: '/pages/admin/users' }) }
-function toKnowledge() { uni.redirectTo({ url: '/pages/knowledge/manage' }) }
-function toAnnouncements() { uni.redirectTo({ url: '/pages/admin/announcements' }) }
-function back() { uni.navigateBack() }
+function toUsers() { uni.navigateTo({ url: '/pages/admin/users' }) }
+function toKnowledge() { uni.navigateTo({ url: '/pages/knowledge/manage' }) }
+function toAnnouncements() { uni.navigateTo({ url: '/pages/admin/announcements' }) }
+function back() { safeBack('/pages/index/index') }
 </script>
 
 <style scoped>

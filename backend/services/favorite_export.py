@@ -169,6 +169,12 @@ def favorite_pdf(favorite, report: bool = False) -> bytes:
         Spacer(1, 7 * mm),
         InfoBlock("寓意", _snapshot_value(snapshot, "moral")),
     ]
+    analysis = _snapshot_value(snapshot, "analysis")
+    if analysis:
+        story.extend([
+            Spacer(1, 7 * mm),
+            InfoBlock("推演", analysis),
+        ])
     if report or favorite.category == "企业名":
         story.extend([
             Spacer(1, 7 * mm),
@@ -232,6 +238,8 @@ def favorite_png(favorite) -> bytes:
     y = 505
     y = text_block(draw, "出处", _snapshot_value(snapshot, "reference"), 120, y, width - 240)
     y = text_block(draw, "寓意", _snapshot_value(snapshot, "moral"), 120, y, width - 240)
+    if _snapshot_value(snapshot, "analysis"):
+        y = text_block(draw, "推演", _snapshot_value(snapshot, "analysis"), 120, y, width - 240)
 
     draw.line((150, height - 170, width - 150, height - 170), fill=PALETTE["line"], width=2)
     draw.text((width // 2, height - 126), "名字，是故事的第一句话", fill=PALETTE["green"], font=small_font, anchor="mm")

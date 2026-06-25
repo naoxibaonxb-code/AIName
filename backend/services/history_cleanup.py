@@ -14,7 +14,7 @@ logger = logging.getLogger(__name__)
 
 async def cleanup_naming_history() -> int:
     async with AsyncSessionFactory() as session:
-        history_ids = set(await session.scalars(
+        candidate_ids = set(await session.scalars(
             select(NamingSession.id).where(NamingSession.expires_at <= datetime.now())
         ))
         user_ids = await session.scalars(select(distinct(NamingSession.user_id)))
@@ -25,21 +25,37 @@ async def cleanup_naming_history() -> int:
                 .order_by(NamingSession.updated_at.desc())
                 .offset(settings.HISTORY_MAX_PER_USER)
             )
-            history_ids.update(excess)
+            candidate_ids.update(excess)
 
-        if not history_ids:
+        if not candidate_ids:
             return 0
-        for history_id in history_ids:
+
+        deleted_checkpoint_ids = []
+        for history_id in candidate_ids:
             try:
                 await delete_naming_thread(history_id)
             except Exception:
-                logger.exception("清理 LangGraph 历史失败: %s", history_id)
+                logger.exception("清理 LangGraph checkpoint 失败，保留历史等待重试: %s", history_id)
+            else:
+                deleted_checkpoint_ids.append(history_id)
+
+        if not deleted_checkpoint_ids:
+            logger.warning(
+                "本轮发现 %s 条待清理历史，但 checkpoint 均未清理成功，跳过 MySQL 删除",
+                len(candidate_ids),
+            )
+            return 0
+
         await session.execute(
-            delete(NamingSession).where(NamingSession.id.in_(history_ids))
+            delete(NamingSession).where(NamingSession.id.in_(deleted_checkpoint_ids))
         )
         await session.commit()
-        logger.info("已清理 %s 条过期起名历史", len(history_ids))
-        return len(history_ids)
+        logger.info(
+            "已清理 %s 条起名历史及对应 checkpoint，%s 条等待下次重试",
+            len(deleted_checkpoint_ids),
+            len(candidate_ids) - len(deleted_checkpoint_ids),
+        )
+        return len(deleted_checkpoint_ids)
 
 
 async def history_cleanup_loop() -> None:

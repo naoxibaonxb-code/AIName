@@ -17,6 +17,7 @@ class NamingSession(Base):
     name_length: Mapped[str] = mapped_column(String(10), default="不限")
     other: Mapped[str] = mapped_column(Text, default="")
     exclude: Mapped[list] = mapped_column(JSON, default=list)
+    extra_conditions: Mapped[dict | None] = mapped_column(JSON, default=dict, nullable=True)
     created_at: Mapped[datetime] = mapped_column(
         DateTime, default=datetime.now, server_default=func.now(), index=True
     )

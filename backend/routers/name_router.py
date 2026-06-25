@@ -80,16 +80,21 @@ async def take_names_first_time(
             commit=False,
         )
         await UsageRepository(session).record_call(
-            user_id, "generate", True, token_usage, request_id=request_id
+            user_id, "generate", True, token_usage, request_id=request_id,
+            count_daily=permit.quota_source == "free",
         )
         return response
     except NamingServiceError as exc:
+        await session.rollback()
+        await permit.refund_paid_credit(session)
         await _record_failure(
             session, user_id, "generate",
             getattr(exc, "token_usage", token_usage), request_id, exc,
         )
         raise HTTPException(status_code=503, detail=NAMING_BUSY_MESSAGE) from exc
     except Exception as exc:
+        await session.rollback()
+        await permit.refund_paid_credit(session)
         await _record_failure(
             session, user_id, "generate", token_usage, request_id, exc
         )
@@ -132,16 +137,21 @@ async def take_names_feedback(
             commit=False,
         )
         await UsageRepository(session).record_call(
-            user_id, "feedback", True, token_usage, request_id=data.thread_id
+            user_id, "feedback", True, token_usage, request_id=data.thread_id,
+            count_daily=permit.quota_source == "free",
         )
         return response
     except NamingServiceError as exc:
+        await session.rollback()
+        await permit.refund_paid_credit(session)
         await _record_failure(
             session, user_id, "feedback",
             getattr(exc, "token_usage", token_usage), data.thread_id, exc,
         )
         raise HTTPException(status_code=503, detail=NAMING_BUSY_MESSAGE) from exc
     except Exception as exc:
+        await session.rollback()
+        await permit.refund_paid_credit(session)
         await _record_failure(
             session, user_id, "feedback", token_usage, data.thread_id, exc
         )
@@ -156,11 +166,15 @@ async def get_quota(
         user: User = Depends(auth_handler.current_user_dependency),
         session: AsyncSession = Depends(get_session)):
     today = date.today()
-    used = await UsageRepository(session).daily_used(user.id, today)
+    usage_repo = UsageRepository(session)
+    used = await usage_repo.daily_used(user.id, today)
+    paid_remaining = await usage_repo.paid_remaining(user.id)
     limit = settings.DAILY_FREE_GENERATIONS
     return QuotaOut(
         date=today,
         daily_limit=limit,
         used=used,
         remaining=max(0, limit - used),
+        paid_remaining=paid_remaining,
+        total_remaining=max(0, limit - used) + paid_remaining,
     )

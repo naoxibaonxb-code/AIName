@@ -21,23 +21,31 @@
           <text :class="['file-status', file.status]">{{ knowledgeStatus(file.status) }}</text>
         </view>
       </view>
+      <view v-if="form.category === '企业名'" class="field"><text class="label">品牌调性 <text class="hint">选填</text></text><input v-model.trim="form.brand_tone" class="input" maxlength="80" placeholder="例如：科技感、亲和力、高端、东方美学" /></view>
+      <view v-if="form.category === '企业名'" class="field"><text class="label">目标客群 <text class="hint">选填</text></text><input v-model.trim="form.target_audience" class="input" maxlength="80" placeholder="例如：一二线城市年轻家庭、B端制造企业" /></view>
+      <view v-if="form.category === '企业名'" class="field"><text class="label">竞品/相似品牌 <text class="hint">选填</text></text><input v-model.trim="form.competitors" class="input" maxlength="120" placeholder="例如：元气森林、喜茶、特斯拉，需避开相似感" /></view>
       <view v-if="form.category === '人名'" class="field"><text class="label">姓氏 <text class="required">必填</text></text><input v-model.trim="form.surname" class="input" maxlength="4" placeholder="例如：林" /></view>
       <view v-if="form.category === '人名'" class="field"><text class="label">性别偏好</text><view class="chips"><view v-for="item in genders" :key="item" :class="['chip', { active: form.gender === item }]" @tap="form.gender = item">{{ item }}</view></view></view>
+      <view v-if="form.category === '人名'" class="field"><text class="label">八字五行 <text class="hint">选填</text></text><view :class="['toggle-row', { active: form.use_bazi }]" @tap="form.use_bazi = !form.use_bazi"><text>{{ form.use_bazi ? '已启用命理参考' : '不启用命理参考' }}</text><view class="toggle-dot" /></view></view>
+      <view v-if="form.category === '人名' && form.use_bazi" class="field"><text class="label">出生信息 <text class="hint">时间、地点</text></text><input v-model.trim="form.birth_info" class="input" maxlength="80" placeholder="例如：2024年5月20日 08:30，杭州，阳历" /></view>
       <view class="field"><text class="label">名字长度 <text class="hint">{{ lengthHint }}</text></text><view class="chips"><view v-for="item in availableLengths" :key="item" :class="['chip', { active: form.length === item }]" @tap="form.length = item">{{ item }}</view></view></view>
       <view class="field"><text class="label">{{ categoryCopy.otherLabel }} <text class="hint">{{ categoryCopy.otherHint }}</text></text><textarea v-model="form.other" class="textarea" maxlength="300" :placeholder="categoryCopy.otherPlaceholder" /></view>
+      <view v-if="form.category === '虚拟IP'" class="field"><text class="label">世界观/角色设定 <text class="hint">选填</text></text><textarea v-model="form.ip_setting" class="textarea small-textarea" maxlength="220" placeholder="例如：来自月面档案馆的见习管理员，负责收集人类梦境碎片" /></view>
+      <view v-if="form.category === '虚拟IP'" class="field"><text class="label">性格/口头禅 <text class="hint">选填</text></text><input v-model.trim="form.ip_personality" class="input" maxlength="120" placeholder="例如：毒舌但温柔，常说“收到，开始存档”" /></view>
       <view class="field"><text class="label">{{ categoryCopy.excludeLabel }} <text class="hint">用逗号分隔</text></text><input v-model="excludeText" class="input" :placeholder="categoryCopy.excludePlaceholder" /></view>
       <view v-if="user.role !== 'admin'" :class="['quota-card', { exhausted: quotaExhausted }]">
-        <view><text class="quota-title">今日免费额度</text><text class="quota-tip">仅成功生成后计入次数</text></view>
-        <view class="quota-value"><text>{{ quota.remaining === null ? '--' : quota.remaining }}</text><text>/ {{ quota.daily_limit }}</text></view>
+        <view><text class="quota-title">{{ quota.remaining === 0 && quota.paid_remaining > 0 ? '付费权益可用' : '今日生成额度' }}</text><text class="quota-tip">{{ quota.remaining === 0 && quota.paid_remaining > 0 ? '本次将消耗 1 次付费权益' : '仅成功生成后计入次数' }}</text></view>
+        <view class="quota-stack"><view class="quota-value"><text>{{ quota.remaining }}</text><text>/ {{ quota.daily_limit }}</text></view><text class="paid-quota">付费 {{ quota.paid_remaining || 0 }} 次</text></view>
       </view>
       <view v-else class="quota-card admin-quota"><view><text class="quota-title">管理员模式</text><text class="quota-tip">生成额度不受每日限制</text></view><text class="admin-quota-mark">∞</text></view>
-      <button class="generate" :disabled="loading" @tap="generate"><text>{{ loading ? '正在寻名...' : quotaExhausted ? '今日额度已用完' : '生成名字' }}</text><text class="arrow">→</text></button>
+      <button class="generate" :disabled="loading" @tap="generate"><text>{{ loading ? '正在寻名...' : quotaExhausted ? '购买生成机会' : '生成名字' }}</text><text class="arrow">→</text></button>
     </view>
     <view v-if="names.length" class="results">
       <view class="result-head"><view><text class="section-label">02 / 灵感结果</text><view class="result-title">为你找到 {{ names.length }} 个名字</view></view><view :class="['again', { loading }]" @tap="regenerate"><view v-if="loading" class="again-spinner" /><text>{{ loading ? '生成中' : '换一批' }}</text></view></view>
       <view v-for="(item, index) in names" :key="`${item.name}-${index}`" class="name-card">
         <view class="number">0{{ index + 1 }}</view><view class="name-main"><view class="name-row"><view class="name">{{ item.name }}</view><view :class="['favorite-action', { active: favoriteIndexes.includes(index), loading: favoriteLoadingIndex === index }]" @tap="favoriteName(index)"><text>{{ favoriteIndexes.includes(index) ? '已收藏' : favoriteLoadingIndex === index ? '收藏中' : '收藏' }}</text></view></view><view class="moral">{{ item.moral }}</view>
           <view class="detail"><text class="tag">出处</text><text>{{ item.reference }}</text></view>
+          <view v-if="item.analysis" class="detail"><text class="tag">推演</text><text>{{ item.analysis }}</text></view>
           <view v-if="item.domain" class="detail"><text class="tag">域名</text><text>{{ item.domain }}</text><text class="status">{{ item.domain_status }}</text></view>
         </view>
       </view>
@@ -50,26 +58,42 @@
 import { computed, onUnmounted, reactive, ref } from 'vue'
 import { onLoad, onShow } from '@dcloudio/uni-app'
 import { api } from '../../utils/request.js'
-const categories = ['人名', '企业名', '宠物名'], genders = ['不限', '男', '女']
+const categories = ['人名', '企业名', '宠物名', '虚拟IP'], genders = ['不限', '男', '女']
 const BUSY_MESSAGE = '当前访问人数较多，生成服务暂时繁忙，请稍后重新尝试。'
-const form = reactive({ category: '人名', surname: '', gender: '不限', length: '不限', other: '' })
+const form = reactive({
+  category: '人名',
+  surname: '',
+  gender: '不限',
+  length: '不限',
+  other: '',
+  use_bazi: false,
+  birth_info: '',
+  brand_tone: '',
+  target_audience: '',
+  competitors: '',
+  ip_setting: '',
+  ip_personality: ''
+})
 const excludeText = ref(''), names = ref([]), threadId = ref(''), loading = ref(false), feedbackLoading = ref(false), feedbackText = ref('')
 const currentRound = ref(1), favoriteIndexes = ref([]), favoriteLoadingIndex = ref(-1)
 const knowledgeFiles = ref([]), uploading = ref(false), uploadProgress = ref(0)
 const user = ref({})
 const announcements = ref([])
-const quota = reactive({ daily_limit: 3, used: 0, remaining: null })
+const quota = reactive({ daily_limit: 3, used: 0, remaining: 0, paid_remaining: 0, total_remaining: 0 })
+const quotaLoaded = ref(false)
 let knowledgeTimer
 const userInitial = computed(() => (user.value.username || '我').slice(0, 1).toUpperCase())
 const lengthOptions = {
   人名: ['不限', '单字名', '双字名'],
   企业名: ['不限', '2-4字（推荐）', '3-5字'],
-  宠物名: ['不限', '1-2字', '2-3字']
+  宠物名: ['不限', '1-2字', '2-3字'],
+  虚拟IP: ['不限', '1-2字', '2-3字']
 }
 const lengthHints = {
   人名: '名的字数，不含姓氏',
   企业名: '短名更利于传播',
-  宠物名: '越短越好叫'
+  宠物名: '越短越好叫',
+  虚拟IP: '便于传播和二创'
 }
 const categoryCopies = {
   人名: {
@@ -101,12 +125,22 @@ const categoryCopies = {
     excludeLabel: '不想使用的字',
     excludePlaceholder: '例如：球, 豆, 宝',
     feedbackPlaceholder: '例如：更可爱一点，读起来更短，更适合日常喊'
+  },
+  虚拟IP: {
+    title: '为虚拟 IP 取名',
+    content: '更关注角色辨识度、世界观适配、传播记忆点和二创空间，适合账号人设、游戏角色或小说角色。',
+    otherLabel: '角色方向',
+    otherHint: '用途、题材、受众',
+    otherPlaceholder: '例如：治愈系短视频虚拟主播，面向年轻女性，希望名字灵动、有记忆点...',
+    excludeLabel: '避开的字词',
+    excludePlaceholder: '例如：萌, 酱, 小',
+    feedbackPlaceholder: '例如：更有幻想感，适合做头像昵称和口播'
   }
 }
 const availableLengths = computed(() => lengthOptions[form.category] || lengthOptions['人名'])
 const lengthHint = computed(() => lengthHints[form.category] || '')
 const categoryCopy = computed(() => categoryCopies[form.category] || categoryCopies['人名'])
-const quotaExhausted = computed(() => user.value.role !== 'admin' && quota.remaining === 0)
+const quotaExhausted = computed(() => user.value.role !== 'admin' && quotaLoaded.value && quota.total_remaining <= 0)
 onLoad(() => { const token = uni.getStorageSync('token'); if (!token) return uni.reLaunch({ url: '/pages/login/login' }); user.value = uni.getStorageSync('user') || {} })
 onShow(() => { if (uni.getStorageSync('token')) loadQuota(); loadAnnouncements() })
 onUnmounted(() => clearTimeout(knowledgeTimer))
@@ -114,7 +148,7 @@ function chooseCategory(item) { form.category = item; if (item !== '人名') { f
 function payload() { return { ...form, exclude: excludeText.value.split(/[，,\s]+/).map(v => v.trim()).filter(Boolean) } }
 async function generate() {
   if (form.category === '人名' && !form.surname) return uni.showToast({ title: '请先填写姓氏', icon: 'none' })
-  if (quotaExhausted.value) return showQuotaModal()
+  if (await isQuotaInsufficient()) return showQuotaModal()
   loading.value = true
   try {
     const res = await api.generate(payload())
@@ -136,7 +170,7 @@ async function regenerate() {
 }
 async function sendFeedback() {
   if (!feedbackText.value) return uni.showToast({ title: '请填写调整意见', icon: 'none' })
-  if (quotaExhausted.value) return showQuotaModal()
+  if (await isQuotaInsufficient()) return showQuotaModal()
   feedbackLoading.value = true
   try {
     const res = await api.feedback({ thread_id: threadId.value, category: form.category, feedback: feedbackText.value })
@@ -158,7 +192,7 @@ function toKnowledge() { uni.navigateTo({ url: '/pages/knowledge/manage' }) }
 function logout() { uni.showModal({ title: '退出登录', content: '确定退出当前账号吗？', confirmColor: '#9b5f42', success: ({ confirm }) => { if (confirm) { uni.clearStorageSync(); uni.reLaunch({ url: '/pages/login/login' }) } } }) }
 function showNamingError(error) {
   const message = error?.message || BUSY_MESSAGE
-  if (/免费生成次数已用完|额度已用完/.test(message)) {
+  if (error?.statusCode === 402 || /免费生成次数已用完|额度已用完|额度不足|购买.*生成机会|生成机会后继续使用/.test(message)) {
     loadQuota()
     return showQuotaModal()
   }
@@ -170,7 +204,7 @@ function showNamingError(error) {
   }
   uni.showToast({ title: message, icon: 'none', duration: 3000 })
 }
-function showQuotaModal() { uni.showModal({ title: '今日额度已用完', content: '每日可免费成功生成 3 次，失败请求不会扣除额度。额度将在次日恢复。', showCancel: false, confirmText: '知道了', confirmColor: '#315c4c' }) }
+function showQuotaModal() { uni.showModal({ title: '生成额度已用完', content: '每日可免费成功生成 3 次。你也可以用支付宝沙箱 0.01 元购买 1 次生成机会，支付成功后刷新即可使用。', cancelText: '稍后再说', confirmText: '去购买', confirmColor: '#315c4c', success: ({ confirm }) => { if (confirm) uni.navigateTo({ url: '/pages/payment/alipay' }) } }) }
 async function loadAnnouncements() {
   try { announcements.value = await api.activeAnnouncements() }
   catch (e) { announcements.value = [] }
@@ -178,8 +212,34 @@ async function loadAnnouncements() {
 function announcementType(type) { return ({ info: '公告', notice: '通知', warning: '重要' })[type] || '公告' }
 async function loadQuota() {
   if (user.value.role === 'admin') return
-  try { Object.assign(quota, await api.quota()) }
-  catch (e) { /* 登录失效由请求层统一处理，其余情况保留上次额度显示。 */ }
+  try {
+    applyQuota(await api.quota())
+    quotaLoaded.value = true
+    return true
+  } catch (e) {
+    /* 登录失效由请求层统一处理，其余情况保留上次额度显示。 */
+    return false
+  }
+}
+function applyQuota(data = {}) {
+  const dailyLimit = Number(data.daily_limit ?? quota.daily_limit ?? 3)
+  const used = Number(data.used ?? 0)
+  const remaining = Math.max(0, Number(data.remaining ?? dailyLimit - used))
+  const paidRemaining = Math.max(0, Number(data.paid_remaining ?? 0))
+  quota.daily_limit = Number.isFinite(dailyLimit) ? dailyLimit : 3
+  quota.used = Number.isFinite(used) ? used : 0
+  quota.remaining = Number.isFinite(remaining) ? remaining : 0
+  quota.paid_remaining = Number.isFinite(paidRemaining) ? paidRemaining : 0
+  const total = Number(data.total_remaining ?? quota.remaining + quota.paid_remaining)
+  quota.total_remaining = Math.max(0, Number.isFinite(total) ? total : quota.remaining + quota.paid_remaining)
+}
+async function isQuotaInsufficient() {
+  if (user.value.role === 'admin') return false
+  if (!quotaLoaded.value) {
+    const loaded = await loadQuota()
+    if (!loaded) return false
+  }
+  return quota.total_remaining <= 0
 }
 async function loadKnowledgeFiles(silent = true) {
   try {
@@ -239,9 +299,10 @@ async function favoriteName(index) {
 .again{min-width:126rpx;height:60rpx;padding:0 18rpx;border:1px solid rgba(49,92,76,.2);border-radius:100rpx;background:#e8eee9;display:flex;align-items:center;justify-content:center;gap:10rpx;color:#315c4c;font-size:23rpx;font-weight:600;white-space:nowrap;transition:transform .15s ease,background-color .15s ease}.again:active{transform:scale(.95);background:#dce7e0}.again.loading{color:#718078;background:#edf0ec;pointer-events:none}.again-spinner{width:22rpx;height:22rpx;border:3rpx solid rgba(49,92,76,.2);border-top-color:#315c4c;border-radius:50%;animation:again-spin .75s linear infinite}@keyframes again-spin{to{transform:rotate(360deg)}}
 .knowledge-box{margin:-10rpx 0 36rpx;padding:28rpx;border:1px solid #dce3dd;border-radius:20rpx;background:#f0f4f1}.knowledge-head{display:flex;align-items:flex-start;justify-content:space-between;gap:24rpx}.knowledge-head .label{margin-bottom:6rpx}.knowledge-tip{display:block;max-width:540rpx;color:#7f8781;font-size:21rpx;line-height:1.6}.knowledge-actions{display:flex;gap:12rpx;flex:none}.upload-btn,.manage-btn{width:152rpx;height:68rpx;line-height:68rpx;margin:0;padding:0;border-radius:14rpx;font-size:22rpx}.upload-btn{background:#315c4c;color:#fff}.manage-btn{background:#fff;color:#315c4c;border:1px solid rgba(49,92,76,.24)}.upload-btn[disabled]{background:#83968d}.knowledge-empty{padding:26rpx 0 2rpx;color:#9a9e99;font-size:21rpx}.knowledge-file{display:flex;align-items:center;gap:16rpx;margin-top:20rpx;padding-top:20rpx;border-top:1px solid #dce2dd}.file-icon{flex:none;width:64rpx;height:54rpx;border-radius:11rpx;background:#dde8e1;color:#315c4c;display:flex;align-items:center;justify-content:center;font-size:18rpx;font-weight:700}.file-info{flex:1;min-width:0}.file-name,.file-error{display:block}.file-name{overflow:hidden;text-overflow:ellipsis;white-space:nowrap;color:#424b46;font-size:23rpx}.file-error{margin-top:5rpx;color:#a05247;font-size:19rpx}.file-status{flex:none;padding:6rpx 12rpx;border-radius:100rpx;font-size:18rpx}.file-status.pending,.file-status.processing{background:#eee8dc;color:#99713f}.file-status.ready{background:#dcebe2;color:#397155}.file-status.failed{background:#f3dfdb;color:#a04c42}
 .hero{display:flex;align-items:flex-end;justify-content:space-between;gap:32rpx}.inspiration-link{flex:none;display:flex;align-items:center;gap:16rpx;padding:18rpx 22rpx;border:1px solid rgba(49,92,76,.15);border-radius:20rpx;background:rgba(255,255,255,.48)}.inspiration-link:active{background:#e5ece7}.inspiration-mark{width:52rpx;height:52rpx;border-radius:15rpx;background:#315c4c;color:#fff;display:flex;align-items:center;justify-content:center;font:600 25rpx serif}.inspiration-title,.inspiration-sub{display:block}.inspiration-title{color:#315c4c;font-size:23rpx;font-weight:650}.inspiration-sub{color:#8a8d87;font-size:18rpx;margin-top:4rpx}.name-row{display:flex;align-items:center;justify-content:space-between;gap:18rpx}.favorite-action{flex:none;padding:9rpx 17rpx;border:1px solid #d8c4aa;border-radius:100rpx;color:#9a6a3e;font-size:20rpx}.favorite-action:active{transform:scale(.95)}.favorite-action.active{border-color:#b87a48;background:#f2e5d7;color:#8b562f}.favorite-action.loading{opacity:.65}
-.quota-card{display:flex;align-items:center;justify-content:space-between;gap:20rpx;margin:8rpx 0 24rpx;padding:20rpx 24rpx;border:1px solid #d8e2dc;border-radius:17rpx;background:#edf3ef;color:#315c4c}.quota-card.exhausted{border-color:#e5c9bd;background:#f7ece7;color:#97543e}.quota-title,.quota-tip{display:block}.quota-title{font-size:24rpx;font-weight:650}.quota-tip{margin-top:5rpx;color:#858d87;font-size:19rpx}.quota-value{display:flex;align-items:baseline;gap:5rpx;white-space:nowrap}.quota-value text:first-child{font:600 40rpx serif}.quota-value text:last-child{font-size:20rpx;color:#7d8881}.admin-quota{background:#eee9df;border-color:#e2d6c7;color:#8d623f}.admin-quota-mark{font:600 42rpx serif}.generate[disabled]{opacity:.82}
+.quota-card{display:flex;align-items:center;justify-content:space-between;gap:20rpx;margin:8rpx 0 24rpx;padding:20rpx 24rpx;border:1px solid #d8e2dc;border-radius:17rpx;background:#edf3ef;color:#315c4c}.quota-card.exhausted{border-color:#e5c9bd;background:#f7ece7;color:#97543e}.quota-title,.quota-tip{display:block}.quota-title{font-size:24rpx;font-weight:650}.quota-tip{margin-top:5rpx;color:#858d87;font-size:19rpx}.quota-stack{text-align:right}.quota-value{display:flex;align-items:baseline;justify-content:flex-end;gap:5rpx;white-space:nowrap}.quota-value text:first-child{font:600 40rpx serif}.quota-value text:last-child{font-size:20rpx;color:#7d8881}.paid-quota{display:block;margin-top:3rpx;color:#9a6b43;font-size:19rpx}.admin-quota{background:#eee9df;border-color:#e2d6c7;color:#8d623f}.admin-quota-mark{font:600 42rpx serif}.generate[disabled]{opacity:.82}
 .announcements{width:calc(100% - 56rpx);max-width:900px;margin:-20rpx auto 34rpx}.announcement{display:flex;gap:18rpx;padding:22rpx 24rpx;margin-bottom:14rpx;border:1px solid #dedbd2;border-radius:20rpx;background:rgba(255,255,255,.66);box-shadow:0 10rpx 30rpx rgba(66,61,50,.05)}.announcement.warning{border-color:#e7c7bf;background:#fff4ef}.announcement.notice{border-color:#e1d3bf;background:#fbf5eb}.announcement-tag{flex:none;height:42rpx;line-height:42rpx;padding:0 15rpx;border-radius:100rpx;background:#e3ece7;color:#315c4c;font-size:19rpx;font-weight:650}.announcement.warning .announcement-tag{background:#f1ded9;color:#a04c42}.announcement.notice .announcement-tag{background:#eee3d5;color:#9a6b43}.announcement-title,.announcement-content{display:block}.announcement-title{font-size:25rpx;font-weight:700;color:#29312d}.announcement-content{margin-top:7rpx;color:#6f746e;font-size:21rpx;line-height:1.55}
 .category-intro{margin:-22rpx 0 34rpx;padding:22rpx 24rpx;border:1px solid #e1dfd7;border-radius:18rpx;background:#fbfaf6}.intro-title,.intro-content{display:block}.intro-title{color:#315c4c;font-size:26rpx;font-weight:700}.intro-content{margin-top:8rpx;color:#72766f;font-size:22rpx;line-height:1.6}
+.small-textarea{height:150rpx}.toggle-row{height:76rpx;box-sizing:border-box;display:flex;align-items:center;justify-content:space-between;padding:0 22rpx;border:1px solid #d9d7d0;border-radius:100rpx;background:#f5f4ef;color:#73766f;font-size:24rpx}.toggle-row.active{border-color:#315c4c;background:#e7eee9;color:#315c4c;font-weight:600}.toggle-dot{width:42rpx;height:42rpx;border-radius:50%;background:#c8cbc4;box-shadow:inset 0 0 0 8rpx #fff}.toggle-row.active .toggle-dot{background:#315c4c}
 @media(max-width:480px){.knowledge-box{padding:24rpx 20rpx}.knowledge-head{gap:14rpx}.knowledge-tip{font-size:19rpx}.upload-btn{width:132rpx}.knowledge-file{align-items:flex-start;flex-wrap:wrap}.file-info{flex:1 1 calc(100% - 84rpx)}.file-status{margin-left:80rpx}}
 @media(max-width:360px){.knowledge-head{flex-direction:column}.knowledge-actions,.upload-btn,.manage-btn{width:100%}.file-status{margin-left:0}}
 @media(max-width:650px){.hero{align-items:flex-start;flex-direction:column}.inspiration-link{align-self:stretch;justify-content:flex-start}.inspiration-sub{font-size:19rpx}}

@@ -76,12 +76,30 @@ class Settings:
 
     DEEPSEEK_API_KEY: SecretStr | None = SecretStr(os.getenv("DEEPSEEK_API_KEY") or "")
 
+    ALIPAY_SANDBOX_ENABLED = os.getenv("ALIPAY_SANDBOX_ENABLED", "False").lower() == "true"
+    ALIPAY_APP_ID = os.getenv("ALIPAY_APP_ID", "")
+    ALIPAY_PRIVATE_KEY = os.getenv("ALIPAY_PRIVATE_KEY", "")
+    ALIPAY_PUBLIC_KEY = os.getenv("ALIPAY_PUBLIC_KEY", "")
+    ALIPAY_GATEWAY = os.getenv(
+        "ALIPAY_GATEWAY",
+        "https://openapi-sandbox.dl.alipaydev.com/gateway.do",
+    )
+    ALIPAY_NOTIFY_URL = os.getenv("ALIPAY_NOTIFY_URL", "")
+    ALIPAY_RETURN_URL = os.getenv("ALIPAY_RETURN_URL", "")
+    ALIPAY_FRONTEND_RETURN_URL = os.getenv("ALIPAY_FRONTEND_RETURN_URL", "")
+    ALIPAY_TEST_SUBJECT = os.getenv("ALIPAY_TEST_SUBJECT", "AIName 生成机会 x1")
+
     PG_NAME = os.getenv("PG_NAME", "postgresql")
     PG_USER = quote_plus(os.getenv("PG_USER", "postgres"))
-    PG_PWD = os.getenv("PG_PWD", "")
+    PG_PWD = quote_plus(os.getenv("PG_PWD", ""))
     PG_HOST = os.getenv("PG_HOST", "127.0.0.1")
     PG_PORT = int(os.getenv("PG_PORT", "5432"))
     PG_DB_NAME = os.getenv("PG_DB_NAME", "ainame")
+    MEMORY_EMBEDDING_MODEL = os.getenv("MEMORY_EMBEDDING_MODEL", "nomic-embed-text")
+    MEMORY_EMBEDDING_DIM = int(os.getenv("MEMORY_EMBEDDING_DIM", "768"))
+    MEMORY_TOP_K = max(1, int(os.getenv("MEMORY_TOP_K", "4")))
+    MEMORY_TIMEOUT_SECONDS = max(1, int(os.getenv("MEMORY_TIMEOUT_SECONDS", "3")))
+    MEMORY_ENABLED = os.getenv("MEMORY_ENABLED", "True").lower() == "true"
 
     @property
     def pg_url(self) -> str:

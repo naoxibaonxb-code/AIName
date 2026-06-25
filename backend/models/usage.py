@@ -37,3 +37,24 @@ class ModelCallUsage(Base):
     created_at: Mapped[datetime] = mapped_column(
         DateTime, default=datetime.now, server_default=func.now(), index=True
     )
+
+
+class GenerationCredit(Base):
+    __tablename__ = "generation_credit"
+    __table_args__ = (
+        UniqueConstraint("source_type", "source_id", name="uq_generation_credit_source"),
+    )
+
+    id: Mapped[int] = mapped_column(Integer, primary_key=True, autoincrement=True)
+    user_id: Mapped[int] = mapped_column(ForeignKey("user.id"), index=True)
+    source_type: Mapped[str] = mapped_column(String(30), default="alipay_sandbox", server_default="alipay_sandbox")
+    source_id: Mapped[str] = mapped_column(String(80), index=True)
+    total_credits: Mapped[int] = mapped_column(Integer, default=1, server_default="1")
+    remaining_credits: Mapped[int] = mapped_column(Integer, default=1, server_default="1", index=True)
+    status: Mapped[str] = mapped_column(String(20), default="active", server_default="active", index=True)
+    created_at: Mapped[datetime] = mapped_column(
+        DateTime, default=datetime.now, server_default=func.now(), index=True
+    )
+    updated_at: Mapped[datetime] = mapped_column(
+        DateTime, default=datetime.now, onupdate=datetime.now, server_default=func.now()
+    )

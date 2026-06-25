@@ -8,6 +8,25 @@ from schemas.name import NameIn
 from settings.config import settings
 
 
+EXTRA_CONDITION_FIELDS = (
+    "use_bazi",
+    "birth_info",
+    "brand_tone",
+    "target_audience",
+    "competitors",
+    "ip_setting",
+    "ip_personality",
+)
+
+
+def extra_conditions(conditions: NameIn) -> dict:
+    return {
+        field: getattr(conditions, field)
+        for field in EXTRA_CONDITION_FIELDS
+        if getattr(conditions, field, None) not in (None, "", False)
+    }
+
+
 class HistoryRepository:
     def __init__(self, session: AsyncSession):
         self.session = session
@@ -29,6 +48,7 @@ class HistoryRepository:
             name_length=conditions.length,
             other=conditions.other or "",
             exclude=conditions.exclude,
+            extra_conditions=extra_conditions(conditions),
             expires_at=now + timedelta(days=settings.HISTORY_RETENTION_DAYS),
         )
         self.session.add(history)
@@ -178,6 +198,7 @@ class HistoryRepository:
 
 
 def history_conditions(history: NamingSession) -> NameIn:
+    extra = history.extra_conditions or {}
     return NameIn(
         category=history.category,
         surname=history.surname,
@@ -185,4 +206,11 @@ def history_conditions(history: NamingSession) -> NameIn:
         length=history.name_length,
         other=history.other,
         exclude=history.exclude or [],
+        use_bazi=bool(extra.get("use_bazi")),
+        birth_info=extra.get("birth_info") or "",
+        brand_tone=extra.get("brand_tone") or "",
+        target_audience=extra.get("target_audience") or "",
+        competitors=extra.get("competitors") or "",
+        ip_setting=extra.get("ip_setting") or "",
+        ip_personality=extra.get("ip_personality") or "",
     )

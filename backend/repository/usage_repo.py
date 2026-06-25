@@ -3,7 +3,7 @@ from datetime import date, datetime, time, timedelta
 from sqlalchemy import case, func, select, update
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from models.usage import DailyGenerationUsage, ModelCallUsage
+from models.usage import DailyGenerationUsage, GenerationCredit, ModelCallUsage
 from models.user import User
 
 
@@ -20,6 +20,68 @@ class UsageRepository:
         )
         return value or 0
 
+    async def paid_remaining(self, user_id: int) -> int:
+        value = await self.session.scalar(
+            select(func.coalesce(func.sum(GenerationCredit.remaining_credits), 0))
+            .where(
+                GenerationCredit.user_id == user_id,
+                GenerationCredit.status == "active",
+                GenerationCredit.remaining_credits > 0,
+            )
+        )
+        return int(value or 0)
+
+    async def grant_paid_credit(
+            self,
+            user_id: int,
+            source_id: str,
+            credits: int = 1,
+            source_type: str = "alipay_sandbox") -> bool:
+        existing = await self.session.scalar(
+            select(GenerationCredit).where(
+                GenerationCredit.source_type == source_type,
+                GenerationCredit.source_id == source_id,
+            )
+        )
+        if existing:
+            return False
+        self.session.add(GenerationCredit(
+            user_id=user_id,
+            source_type=source_type,
+            source_id=source_id,
+            total_credits=credits,
+            remaining_credits=credits,
+            status="active",
+        ))
+        await self.session.commit()
+        return True
+
+    async def reserve_paid_credit(self, user_id: int) -> int | None:
+        credit = await self.session.scalar(
+            select(GenerationCredit)
+            .where(
+                GenerationCredit.user_id == user_id,
+                GenerationCredit.status == "active",
+                GenerationCredit.remaining_credits > 0,
+            )
+            .order_by(GenerationCredit.created_at.asc(), GenerationCredit.id.asc())
+            .with_for_update()
+            .limit(1)
+        )
+        if not credit:
+            return None
+        credit.remaining_credits -= 1
+        await self.session.commit()
+        return credit.id
+
+    async def refund_paid_credit(self, credit_id: int) -> None:
+        await self.session.execute(
+            update(GenerationCredit)
+            .where(GenerationCredit.id == credit_id)
+            .values(remaining_credits=GenerationCredit.remaining_credits + 1)
+        )
+        await self.session.commit()
+
     async def record_call(
             self,
             user_id: int,
@@ -27,7 +89,8 @@ class UsageRepository:
             success: bool,
             token_usage: dict[str, int],
             request_id: str | None = None,
-            error_type: str | None = None) -> None:
+            error_type: str | None = None,
+            count_daily: bool = True) -> None:
         self.session.add(ModelCallUsage(
             user_id=user_id,
             endpoint=endpoint,
@@ -38,7 +101,7 @@ class UsageRepository:
             request_id=request_id,
             error_type=error_type,
         ))
-        if success:
+        if success and count_daily:
             today = date.today()
             daily = await self.session.scalar(
                 select(DailyGenerationUsage).where(
@@ -54,6 +117,12 @@ class UsageRepository:
                     usage_date=today,
                     successful_generations=1,
                 ))
+            await self.session.execute(
+                update(User)
+                .where(User.id == user_id, User.deleted_at.is_(None))
+                .values(usage_count=User.usage_count + 1)
+            )
+        elif success:
             await self.session.execute(
                 update(User)
                 .where(User.id == user_id, User.deleted_at.is_(None))

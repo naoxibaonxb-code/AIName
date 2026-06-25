@@ -1,62 +1,42 @@
 # AIName / 知名
 
-AIName 是一个基于大语言模型的智能起名系统，支持人名、企业名和宠物名生成。系统会结合用户偏好、避用字、知识库资料和多轮反馈，生成带有出处、寓意和企业域名建议的命名方案。
+AIName 是一个前后端分离、同仓库管理的 AI 起名系统。当前稳定版支持邮箱注册登录、人名 / 企业名 / 宠物名 / 虚拟 IP 起名、企业知识库 RAG、多轮反馈、历史收藏、导出、每日免费额度、支付宝沙箱购买生成机会和管理员后台。
 
-AIName is an AI-powered naming system for personal names, company names, and pet names. It combines user preferences, excluded characters, knowledge-base references, and multi-turn feedback to create names with references, meanings, and domain suggestions.
+项目当前以“基础业务可用、增强能力可降级”为原则：DeepSeek 负责起名生成，企业名可参考私有 / 公共知识库，长期记忆依赖 PostgreSQL + pgvector + Ollama Embeddings；当长期记忆不可用时，起名主流程会继续运行。
 
-## 项目亮点
+## 当前能力
 
-- 一站式起名体验：登录、注册、起名、反馈、收藏、导出。
-- 多场景支持：人名、企业名、宠物名采用不同提示词和长度规则。
-- 企业知识库：支持用户私有知识库和平台公共知识库。
-- 历史与收藏：自动保存生成记录，支持收藏、删除、重新生成和导出。
-- 额度与统计：每日免费成功生成次数限制，失败不扣额度；管理员可查看 Token 消耗和调用统计。
-- 管理员模块：查看、搜索、禁用用户，维护公共知识库。
-- 友好异常处理：大模型繁忙、返回空结果或限流时，前端会给出明确提示。
-- 多端适配：uni-app 前端适配 H5、移动端和小程序场景。
-
-## 功能模块
-
-### 用户端
-
-- 邮箱验证码注册与登录
-- JWT 身份认证
-- 用户中心：修改用户名、邮箱、密码
-- 查看登录记录和使用次数
-- 注销账号
-- 人名、企业名、宠物名生成
-- 多轮反馈调整
-- 起名历史与收藏
-- 收藏方案导出：
-  - 人名 / 宠物名：PDF 或 PNG 图片
-  - 企业名：PDF 命名报告，包含名字、出处、寓意和域名状态
-
-### 知识库
-
-- 上传 PDF / TXT 文件
-- 查看解析状态、启用状态、文件大小和向量片段数
-- 私有知识库：仅当前用户企业起名时参考
-- 公共知识库：管理员维护，所有用户企业起名时可参考
-- 支持启用、停用和删除知识库文件
-
-### 管理端
-
-- 查看普通用户列表
-- 搜索用户
-- 禁用或恢复用户
-- 查看 DeepSeek Token 消耗统计
-- 查看模型调用明细
-- 管理平台公共知识库
+- 账号体系：邮箱验证码注册、登录、JWT 鉴权、登录记录。
+- 用户中心：修改用户名、修改密码、查看使用次数、注销账号；邮箱是注册账号，只读不可修改。
+- AI 起名：
+  - 人名 / 宝宝起名：支持姓氏、性别、长度、避用字、八字五行参考。
+  - 企业 / 品牌起名：支持品牌调性、目标客群、竞品避让、RAG 知识库、`.com` 域名建议与查询。
+  - 宠物名：支持性格、外貌、品种等趣味化输入。
+  - 虚拟 IP：支持世界观、人设、口头禅和传播性推演。
+- 多轮反馈：基于当前会话继续调整候选名。
+- 历史与收藏：保存生成记录、收藏候选、删除、重新生成、导出 JSON / CSV / PDF / PNG。
+- 企业知识库：用户私有知识库 + 平台公共知识库，支持 PDF / TXT 上传、启停、删除。
+- RabbitMQ 异步处理：上传 / 删除知识库文件由 `rag_worker.py` 消费任务处理。
+- 额度与支付：
+  - 普通用户每日免费成功生成 3 次，失败不扣次数。
+  - 支付宝沙箱 `0.01` 元购买 1 次生成机会。
+  - 免费额度用完后自动消耗付费权益；生成失败会退回已预扣权益。
+- 管理后台：用户管理、调用统计、Token 消耗、公共知识库、公告管理。
+- 安全与体验：
+  - 登录失败统一提示，避免账号枚举。
+  - Token 非法格式不会导致 500。
+  - 普通用户查看公共知识库时隐藏内部字段。
+  - 默认响应增加 `Cache-Control: no-store`。
+  - 前端返回导航做了兜底，减少无法返回上一页的问题。
 
 ## 技术栈
 
-### Backend
+### 后端
 
 - FastAPI
-- SQLAlchemy
-- Alembic
+- SQLAlchemy / Alembic
 - MySQL
-- PostgreSQL checkpoint for LangGraph
+- PostgreSQL + LangGraph checkpoint + pgvector
 - Redis
 - RabbitMQ
 - LangChain / LangGraph
@@ -64,84 +44,88 @@ AIName is an AI-powered naming system for personal names, company names, and pet
 - Chroma
 - Ollama Embeddings
 - ReportLab / Pillow
-- JWT
 - FastAPI Mail
 
-### Frontend
+### 前端
 
-- Vue 3
 - uni-app
+- Vue 3
 - Composition API
 - `uni.request`
-- 响应式页面布局
+- HBuilderX 运行到 H5 / App / 小程序环境
 
 ## 项目结构
 
 ```text
 AIName/
 ├── backend/
-│   ├── alembic/          # 数据库迁移
-│   ├── core/             # 认证、数据库、工作流、RAG 服务
+│   ├── alembic/          # MySQL 业务表迁移
+│   ├── core/             # 认证、数据库、工作流、RAG、长期记忆
 │   ├── models/           # SQLAlchemy 模型
 │   ├── repository/       # 数据访问层
 │   ├── routers/          # FastAPI 路由
-│   ├── schemas/          # Pydantic 请求与响应模型
-│   ├── services/         # 额度控制、导出等服务
+│   ├── schemas/          # Pydantic 模型
+│   ├── services/         # 额度、支付、导出、清理等服务
 │   ├── settings/         # 配置
-│   ├── main.py           # 后端入口
+│   ├── main.py           # API 入口
+│   ├── rag_worker.py     # RabbitMQ 知识库消费者
 │   └── requirements.txt
 ├── frontend/
-│   ├── pages/            # 页面
-│   ├── utils/            # 请求封装
-│   ├── config.js         # 后端地址
+│   ├── pages/            # uni-app 页面
+│   ├── utils/            # 请求、导航工具
+│   ├── config.js         # API 地址
 │   └── pages.json
 ├── .gitignore
 └── README.md
 ```
 
-## 本地运行
+## 本地启动
 
-### 1. 后端环境
+### 1. 准备服务
 
-准备以下服务：
+需要本地或远程可用的：
 
-- Python
+- Python 3.11+
 - MySQL
-- PostgreSQL
+- PostgreSQL，并安装 `pgvector` 扩展
 - Redis
 - RabbitMQ
-- Ollama，本地 Embedding 模型：`nomic-embed-text`
+- Ollama，建议拉取 `nomic-embed-text`
 - DeepSeek API Key
 - 邮箱 SMTP 服务
 
-进入后端目录：
+### 2. 安装后端依赖
 
 ```bash
 cd backend
 pip install -r requirements.txt
 ```
 
-复制示例环境变量文件，并按本地服务修改：
+### 3. 配置环境变量
 
-```bash
+复制示例文件：
+
+```powershell
 copy .env.example .env
 ```
 
-Linux / macOS 可使用：
+Linux / macOS：
 
 ```bash
 cp .env.example .env
 ```
 
-常见配置项包括：
+核心配置项以 [backend/.env.example](backend/.env.example) 为准，常用项如下：
 
 ```env
-MYSQL_HOST=127.0.0.1
-MYSQL_PORT=3306
-MYSQL_USER=root
-MYSQL_PASSWORD=your-mysql-password
-MYSQL_DATABASE=ainame
+# MySQL
+DB_USER=root
+DB_PASSWORD=your-mysql-password
+DB_HOST=127.0.0.1
+DB_PORT=3306
+DB_NAME=ainame
 
+# PostgreSQL for LangGraph checkpoint and long-term memory
 PG_NAME=postgresql
 PG_USER=postgres
 PG_PWD=your-postgres-password
@@ -149,40 +133,48 @@ PG_HOST=127.0.0.1
 PG_PORT=5432
 PG_DB_NAME=ainame
 
+# Long-term memory
+MEMORY_ENABLED=True
+MEMORY_EMBEDDING_MODEL=nomic-embed-text
+MEMORY_EMBEDDING_DIM=768
+MEMORY_TOP_K=4
+MEMORY_TIMEOUT_SECONDS=3
+
+# Redis / RabbitMQ / Auth / AI
 REDIS_HOST=127.0.0.1
-REDIS_PORT=6379
-REDIS_DB=0
-
 RABBITMQ_HOST=127.0.0.1
-RABBITMQ_PORT=5672
-RABBITMQ_USER=admin
-RABBITMQ_PASSWORD=123456
-RABBITMQ_KNOWLEDGE_QUEUE=ainame.knowledge.tasks
-
-JWT_SECRET_KEY=replace-with-a-strong-secret
+JWT_SECRET_KEY=replace-with-a-long-random-secret
 DEEPSEEK_API_KEY=your-deepseek-api-key
 
-HISTORY_RETENTION_DAYS=30
-HISTORY_MAX_PER_USER=100
+# Quota
 DAILY_FREE_GENERATIONS=3
+
+# Alipay sandbox, optional
+ALIPAY_SANDBOX_ENABLED=False
+ALIPAY_APP_ID=your-sandbox-app-id
+ALIPAY_PRIVATE_KEY=your-sandbox-app-private-key
+ALIPAY_PUBLIC_KEY=your-alipay-sandbox-public-key
+ALIPAY_NOTIFY_URL=http://127.0.0.1:8000/payments/alipay/notify
+ALIPAY_RETURN_URL=http://127.0.0.1:8000/payments/alipay/return-page
+ALIPAY_FRONTEND_RETURN_URL=http://127.0.0.1:5173/#/pages/profile/profile
 ```
 
-执行数据库迁移：
+### 4. 初始化数据库
+
+业务表迁移：
 
 ```bash
 alembic upgrade head
 ```
 
-启动后端：
+LangGraph checkpoint 表会在后端启动时通过 `checkpoint_saver.setup()` 自动初始化。
+
+长期记忆表会在 `MEMORY_ENABLED=True` 时自动初始化；如果 PostgreSQL / pgvector / Ollama Embeddings 不可用，系统会降级为无长期记忆模式。
+
+### 5. 启动后端
 
 ```bash
 uvicorn main:app --reload
-```
-
-启动知识库消费者。该进程负责消费 RabbitMQ 队列中的知识库解析和删除任务：
-
-```bash
-python rag_worker.py
 ```
 
 接口文档：
@@ -191,88 +183,88 @@ python rag_worker.py
 http://127.0.0.1:8000/docs
 ```
 
-### 2. 创建管理员
+### 6. 启动知识库消费者
 
-先通过前端注册一个普通用户，然后在 `backend` 目录执行：
+知识库上传、删除和状态变更依赖 RabbitMQ 异步任务：
 
 ```bash
-python create_admin.py admin@example.com
+python rag_worker.py
 ```
 
-将 `admin@example.com` 替换为已注册用户的邮箱。重新登录后，管理员入口会在前端显示。
-
-### 3. 前端运行
+### 7. 启动前端
 
 使用 HBuilderX 打开 `frontend` 目录。
 
-检查后端地址：
+检查 API 地址：
 
 ```js
 // frontend/config.js
 export const API_BASE_URL = 'http://127.0.0.1:8000'
 ```
 
-然后选择运行到浏览器、手机或小程序模拟器。
+然后运行到浏览器、App 或小程序模拟器。真机调试时，将 `127.0.0.1` 改为后端机器的局域网 IP。
 
-真机调试时，需要将 `127.0.0.1` 改为后端电脑的局域网 IP。
+## 管理员账号
 
-## 常用命令
+先通过前端注册普通用户，再在 `backend` 目录执行：
 
 ```bash
-# 后端迁移
-cd backend
-alembic upgrade head
-
-# 后端启动
-uvicorn main:app --reload
-
-# 知识库消费者
-python rag_worker.py
-
-# 设置管理员
 python create_admin.py admin@example.com
 ```
 
-## 注意事项
+重新登录后，前端会显示管理员入口。
 
-- 不要提交 `backend/.env`。
-- 不要提交真实 API Key、数据库密码、邮箱授权码。
-- Redis 未启动时，起名接口会因限流保护而不可用。
-- RabbitMQ 未启动时，知识库上传、启停和删除任务无法投递。
-- 使用知识库上传功能时，除了后端 API 服务，还需要运行 `python rag_worker.py`。
-- 使用知识库功能前，需要确保 Ollama 和 Embedding 模型可用。
-- 导出 PDF / PNG 依赖 `reportlab` 和 `Pillow`。
+## 支付沙箱测试
+
+当前支付只用于实验环境，业务含义是：
+
+```text
+0.01 元 = 1 次生成机会
+```
+
+测试流程：
+
+1. 在 `.env` 中配置支付宝沙箱参数，并设置 `ALIPAY_SANDBOX_ENABLED=True`。
+2. 如果本地接收异步通知，使用 NATAPP 等工具将公网地址转发到 `127.0.0.1:8000`。
+3. 将 `ALIPAY_NOTIFY_URL` 和 `ALIPAY_RETURN_URL` 配置为支付宝可访问的地址。
+4. 前端进入个人中心 -> 生成机会。
+5. 创建订单并完成沙箱支付。
+6. 返回后刷新订单状态，支付成功会发放 1 次权益。
+7. 免费额度用完后，再次生成会自动消耗付费权益。
+
+如果异步通知失败，前端“刷新订单状态”会主动查询支付宝订单并补发权益。
+
+## 常用检查命令
+
+```powershell
+# Python 语法检查
+@'
+import ast
+from pathlib import Path
+for p in Path("backend").rglob("*.py"):
+    ast.parse(p.read_text(encoding="utf-8"), filename=str(p))
+print("python syntax ok")
+'@ | python -
+
+# Git 状态，Windows ownership 异常时可用
+git -c safe.directory=D:/Develop/CodexProject/AIName -C D:\Develop\CodexProject\AIName status
+```
+
+## 运行注意
+
+- 不要提交 `backend/.env` 或任何真实密钥。
+- Redis 未启动时，起名限流和并发保护不可用，接口会返回保护服务不可用。
+- RabbitMQ 未启动时，知识库上传 / 删除任务无法处理。
+- 使用知识库前，需要运行 API 服务和 `rag_worker.py`。
+- 使用长期记忆前，需要 PostgreSQL 安装 `pgvector`，并保证 Ollama Embedding 模型可用。
+- 支付宝沙箱仅用于模拟支付权益，不接真实生产支付。
 - 生产环境应限制 CORS 域名，并使用强随机 `JWT_SECRET_KEY`。
-
----
 
 ## English
 
-AIName is a full-stack AI naming application built with FastAPI and Vue 3 / uni-app. It supports name generation for people, companies, and pets, with multi-turn refinement, favorites, exportable reports, private/public knowledge bases, quota control, and admin statistics.
+AIName is a full-stack AI naming application built with FastAPI and uni-app / Vue 3. It supports AI name generation for people, companies, pets, and virtual IP characters, with knowledge-base RAG, multi-turn refinement, history, favorites, quota control, sandbox payment credits, and admin management.
 
-### Features
-
-- Email verification, registration, and login
-- JWT authentication
-- User profile, password, email, login history, and account cancellation
-- AI name generation for people, companies, and pets
-- Multi-turn feedback and regeneration
-- Naming history and favorites
-- Favorite export:
-  - Personal / pet names: PDF or PNG
-  - Company names: PDF naming report with reference, meaning, domain, and domain status
-- Private and public knowledge-base management
-- Admin user management
-- DeepSeek token usage statistics
-- Redis-based rate limiting and quota control
-
-### Stack
-
-Backend: FastAPI, SQLAlchemy, Alembic, MySQL, PostgreSQL, Redis, RabbitMQ, LangChain, LangGraph, DeepSeek, Chroma, Ollama Embeddings, ReportLab, Pillow.
-
-Frontend: Vue 3, uni-app, Composition API, and `uni.request`.
-
-### Quick Start
+Quick start:
 
 ```bash
 cd backend
@@ -282,14 +274,7 @@ uvicorn main:app --reload
 python rag_worker.py
 ```
 
-Open `frontend` with HBuilderX, configure `frontend/config.js`, and run it in a browser, mobile device, or mini-program environment.
-
-### Security
-
-- Never commit `.env` or real credentials.
-- Use a strong `JWT_SECRET_KEY`.
-- Restrict CORS origins in production.
-- Keep API keys and passwords in environment variables.
+Open `frontend` with HBuilderX, configure `frontend/config.js`, and run it in the target environment.
 
 ## License
 

@@ -21,7 +21,7 @@
         <view class="stat"><text class="stat-value small">{{ joinDate }}</text><text class="stat-label">加入时间</text></view>
       </view>
 
-      <view class="inspiration-menu"><view class="inspiration-item" @tap="toInspiration('history')"><view class="menu-mark">录</view><view><text>起名历史</text><text>查看每轮生成与调整</text></view><text class="menu-arrow">›</text></view><view class="inspiration-item warm" @tap="toInspiration('favorites')"><view class="menu-mark">藏</view><view><text>我的收藏</text><text>珍藏满意的好名字</text></view><text class="menu-arrow">›</text></view></view>
+      <view class="inspiration-menu"><view class="inspiration-item" @tap="toInspiration('history')"><view class="menu-mark">录</view><view><text>起名历史</text><text>查看每轮生成与调整</text></view><text class="menu-arrow">›</text></view><view class="inspiration-item warm" @tap="toInspiration('favorites')"><view class="menu-mark">藏</view><view><text>我的收藏</text><text>珍藏满意的好名字</text></view><text class="menu-arrow">›</text></view><view class="inspiration-item pay" @tap="toPayment"><view class="menu-mark">付</view><view><text>生成机会</text><text>0.01 元购买 1 次权益</text></view><text class="menu-arrow">›</text></view></view>
 
       <view class="card">
         <view class="card-head"><view><text class="card-index">01</text><text class="card-title">基本资料</text></view><text class="card-note">邮箱为注册账号，仅可查看</text></view>
@@ -63,6 +63,7 @@
 import { computed, reactive, ref } from 'vue'
 import { onLoad } from '@dcloudio/uni-app'
 import { api } from '../../utils/request.js'
+import { safeBack } from '../../utils/navigation.js'
 
 const profile = reactive({}), profileForm = reactive({ username: '', email: '' })
 const passwordForm = reactive({ current_password: '', new_password: '', confirm_password: '' })
@@ -130,7 +131,8 @@ async function cancelAccount() {
 
 function clearSession() { uni.clearStorageSync(); uni.reLaunch({ url: '/pages/login/login' }) }
 function toInspiration(tab) { uni.navigateTo({ url: `/pages/history/history?tab=${tab}` }) }
-function back() { uni.navigateBack() }
+function toPayment() { uni.navigateTo({ url: '/pages/payment/alipay' }) }
+function back() { safeBack('/pages/index/index') }
 function toast(message) { uni.showToast({ title: message, icon: 'none' }) }
 function formatDate(value) { const d = new Date(value); return `${d.getFullYear()}.${String(d.getMonth() + 1).padStart(2, '0')}.${String(d.getDate()).padStart(2, '0')}` }
 function formatDateTime(value) { const d = new Date(value); return `${formatDate(value)} ${String(d.getHours()).padStart(2, '0')}:${String(d.getMinutes()).padStart(2, '0')}` }

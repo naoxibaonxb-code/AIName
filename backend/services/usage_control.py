@@ -29,6 +29,8 @@ class GenerationPermit:
     redis: aioredis.Redis
     lock_key: str
     lock_value: str
+    quota_source: str = "free"
+    paid_credit_id: int | None = None
 
     async def release(self) -> None:
         try:
@@ -37,6 +39,15 @@ class GenerationPermit:
             )
         except Exception:
             # The lock has a short TTL, so a Redis outage cannot leave it permanent.
+            pass
+
+    async def refund_paid_credit(self, session: AsyncSession) -> None:
+        if not self.paid_credit_id:
+            return
+        try:
+            await UsageRepository(session).refund_paid_credit(self.paid_credit_id)
+            self.paid_credit_id = None
+        except Exception:
             pass
 
 
@@ -88,12 +99,20 @@ async def acquire_generation_permit(
     permit = GenerationPermit(redis, lock_key, lock_value)
     try:
         if role != "admin":
-            used = await UsageRepository(session).daily_used(user_id, date.today())
+            usage_repo = UsageRepository(session)
+            used = await usage_repo.daily_used(user_id, date.today())
             if used >= settings.DAILY_FREE_GENERATIONS:
-                raise HTTPException(
-                    status_code=status.HTTP_429_TOO_MANY_REQUESTS,
-                    detail=f"今日免费生成次数已用完（每日 {settings.DAILY_FREE_GENERATIONS} 次）",
-                )
+                credit_id = await usage_repo.reserve_paid_credit(user_id)
+                if credit_id is None:
+                    raise HTTPException(
+                        status_code=status.HTTP_402_PAYMENT_REQUIRED,
+                        detail=(
+                            f"今日免费生成次数已用完（每日 {settings.DAILY_FREE_GENERATIONS} 次），"
+                            "可购买 0.01 元/次的生成机会后继续使用。"
+                        ),
+                    )
+                permit.quota_source = "paid"
+                permit.paid_credit_id = credit_id
         return permit
     except Exception:
         await permit.release()

@@ -24,6 +24,7 @@
           <view class="favorite-main"><view class="favorite-name">{{ item.name }}</view><text class="favorite-category">{{ item.category }}</text></view>
           <view class="favorite-moral">{{ item.snapshot.moral }}</view>
           <view class="favorite-detail"><text>出处</text><view>{{ item.snapshot.reference }}</view></view>
+          <view v-if="item.snapshot.analysis" class="favorite-detail"><text>推演</text><view>{{ item.snapshot.analysis }}</view></view>
           <view v-if="item.snapshot.domain" class="favorite-detail"><text>域名</text><view>{{ item.snapshot.domain }}</view></view>
           <view class="favorite-foot"><text>{{ formatDate(item.created_at) }}</text><view class="favorite-actions"><text @tap="exportFavorite(item)">导出</text><text class="remove-favorite" @tap="removeFavorite(item.id)">移出收藏</text></view></view>
         </view>
@@ -38,8 +39,9 @@
 import { ref } from 'vue'
 import { onLoad, onShow } from '@dcloudio/uni-app'
 import { api } from '../../utils/request.js'
+import { safeBack } from '../../utils/navigation.js'
 
-const categories = [{ label: '全部', value: '' }, { label: '人名', value: '人名' }, { label: '企业名', value: '企业名' }, { label: '宠物名', value: '宠物名' }]
+const categories = [{ label: '全部', value: '' }, { label: '人名', value: '人名' }, { label: '企业名', value: '企业名' }, { label: '宠物名', value: '宠物名' }, { label: '虚拟IP', value: '虚拟IP' }]
 const tab = ref('history'), category = ref(''), histories = ref([]), favorites = ref([]), loading = ref(false)
 const historyTotal = ref(0), favoriteTotal = ref(0), page = ref(1), hasMore = ref(false)
 const pageSize = 10
@@ -69,9 +71,20 @@ function switchTab(value) { if (tab.value === value) return; tab.value = value; 
 function filterCategory(value) { if (category.value === value) return; category.value = value; refresh() }
 function loadMore() { page.value += 1; load() }
 function openDetail(id) { uni.navigateTo({ url: `/pages/history/detail?id=${id}` }) }
-function goNaming() { uni.reLaunch({ url: '/pages/index/index' }) }
-function back() { uni.navigateBack() }
-function conditionText(value) { return [value.surname ? `姓氏 ${value.surname}` : '', value.gender !== '不限' ? value.gender : '', value.length !== '不限' ? value.length : '', value.other || ''].filter(Boolean).join(' · ') || '未设置额外条件' }
+function goNaming() { uni.navigateTo({ url: '/pages/index/index', fail: () => uni.reLaunch({ url: '/pages/index/index' }) }) }
+function back() { safeBack('/pages/index/index') }
+function conditionText(value) {
+  return [
+    value.surname ? `姓氏 ${value.surname}` : '',
+    value.gender !== '不限' ? value.gender : '',
+    value.length !== '不限' ? value.length : '',
+    value.use_bazi ? '八字五行' : '',
+    value.brand_tone ? `调性 ${value.brand_tone}` : '',
+    value.target_audience ? `客群 ${value.target_audience}` : '',
+    value.ip_setting ? '含角色设定' : '',
+    value.other || ''
+  ].filter(Boolean).join(' · ') || '未设置额外条件'
+}
 function formatDate(value) { const d = new Date(value); return `${d.getFullYear()}.${String(d.getMonth() + 1).padStart(2, '0')}.${String(d.getDate()).padStart(2, '0')} ${String(d.getHours()).padStart(2, '0')}:${String(d.getMinutes()).padStart(2, '0')}` }
 function formatShortDate(value) { const d = new Date(value); return `${d.getMonth() + 1}月${d.getDate()}日` }
 function toast(title) { uni.showToast({ title, icon: 'none', duration: 2800 }) }

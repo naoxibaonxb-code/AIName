@@ -8,6 +8,8 @@ class QuotaOut(BaseModel):
     daily_limit: int
     used: int
     remaining: int
+    paid_remaining: int = 0
+    total_remaining: int = 0
 
 
 class ModelCallOut(BaseModel):

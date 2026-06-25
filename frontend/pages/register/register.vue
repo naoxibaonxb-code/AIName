@@ -16,6 +16,7 @@
 <script setup>
 import { onUnmounted, reactive, ref } from 'vue'
 import { api } from '../../utils/request.js'
+import { safeBack } from '../../utils/navigation.js'
 const form = reactive({ email: '', code: '', username: '', password: '', confirm_password: '' })
 const loading = ref(false), sending = ref(false), countdown = ref(0)
 let timer
@@ -34,11 +35,11 @@ async function submit() {
   if (form.password.length < 6) return uni.showToast({ title: '密码至少 6 位', icon: 'none' })
   if (form.password !== form.confirm_password) return uni.showToast({ title: '两次密码输入不一致', icon: 'none' })
   loading.value = true
-  try { await api.register(form); uni.showToast({ title: '注册成功' }); setTimeout(() => uni.navigateBack(), 700) }
+  try { await api.register(form); uni.showToast({ title: '注册成功' }); setTimeout(() => safeBack('/pages/login/login'), 700) }
   catch (e) { uni.showToast({ title: e.message, icon: 'none' }) }
   finally { loading.value = false }
 }
-function back() { uni.navigateBack() }
+function back() { safeBack('/pages/login/login') }
 onUnmounted(() => clearInterval(timer))
 </script>
 <style src="../../styles/auth.css"></style>

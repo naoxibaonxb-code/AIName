@@ -44,6 +44,7 @@
 import { computed, reactive, ref } from 'vue'
 import { onLoad, onShow } from '@dcloudio/uni-app'
 import { api } from '../../utils/request.js'
+import { safeBack } from '../../utils/navigation.js'
 
 const scope = ref('private'), files = ref([]), loading = ref(false), uploading = ref(false), uploadProgress = ref(0), changingId = ref(null)
 const stats = reactive({ private_total: 0, private_ready: 0, public_total: 0, public_ready: 0 })
@@ -137,10 +138,10 @@ function formatSize(size = 0) {
 }
 function formatDate(value) { return value ? String(value).slice(0, 10) : '-' }
 function canManageFile(item) { return item.scope === 'private' || isAdmin.value }
-function toUsers() { uni.redirectTo({ url: '/pages/admin/users' }) }
-function toUsage() { uni.redirectTo({ url: '/pages/admin/usage' }) }
-function toAnnouncements() { uni.redirectTo({ url: '/pages/admin/announcements' }) }
-function back() { uni.navigateBack() }
+function toUsers() { uni.navigateTo({ url: '/pages/admin/users' }) }
+function toUsage() { uni.navigateTo({ url: '/pages/admin/usage' }) }
+function toAnnouncements() { uni.navigateTo({ url: '/pages/admin/announcements' }) }
+function back() { safeBack('/pages/index/index') }
 </script>
 
 <style scoped>

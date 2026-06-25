@@ -16,6 +16,7 @@ from routers.admin_router import router as admin_router
 from routers.announcement_router import router as announcement_router
 from routers.auth_router import router as auth_router
 from routers.name_router import router as name_router
+from routers.payment_router import router as payment_router
 from routers.rag_router import router as rag_router
 from routers.history_router import router as history_router
 from routers.user_router import router as user_router
@@ -60,6 +61,7 @@ async def privacy_headers(request, call_next):
 app.include_router(auth_router)
 app.include_router(announcement_router)
 app.include_router(name_router)
+app.include_router(payment_router)
 app.include_router(rag_router)
 app.include_router(history_router)
 app.include_router(admin_router)

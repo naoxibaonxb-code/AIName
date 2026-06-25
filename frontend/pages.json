@@ -29,6 +29,10 @@
 			"style": { "navigationBarTitleText": "个人中心", "navigationStyle": "custom" }
 		},
 		{
+			"path": "pages/payment/alipay",
+			"style": { "navigationBarTitleText": "支付宝沙箱支付", "navigationStyle": "custom" }
+		},
+		{
 			"path": "pages/history/history",
 			"style": { "navigationBarTitleText": "历史与收藏", "navigationStyle": "custom" }
 		},

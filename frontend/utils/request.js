@@ -183,5 +183,16 @@ export const api = {
   }),
   createAnnouncement: (data) => request({ url: '/admin/announcements', method: 'POST', data, auth: true }),
   updateAnnouncement: (id, data) => request({ url: `/admin/announcements/${id}`, method: 'PATCH', data, auth: true }),
-  deleteAnnouncement: (id) => request({ url: `/admin/announcements/${id}`, method: 'DELETE', auth: true })
+  deleteAnnouncement: (id) => request({ url: `/admin/announcements/${id}`, method: 'DELETE', auth: true }),
+  createAlipaySandboxOrder: (data) => request({
+    url: '/payments/alipay/sandbox/orders',
+    method: 'POST',
+    data,
+    auth: true
+  }),
+  alipaySandboxOrders: () => request({ url: '/payments/alipay/sandbox/orders', auth: true }),
+  alipaySandboxOrder: (outTradeNo) => request({
+    url: `/payments/alipay/sandbox/orders/${encodeURIComponent(outTradeNo)}`,
+    auth: true
+  })
 }
